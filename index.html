@@ -871,6 +871,7 @@ function periodHTML(){var years=dataYears();var withMonth=['dashboard','analisa'
  return '<label class="select">'+I('calendar')+'<select onchange="setYear(this.value)">'+years.map(function(y){return '<option value="'+y+'"'+(y===state.year?' selected':'')+'>'+y+'</option>'}).join('')+'</select></label>'+
  (withMonth?'<label class="select">'+I('filter')+'<select onchange="setMonth(+this.value)"><option value="0"'+(state.month===0?' selected':'')+'>Semua Bulan</option>'+MONTHS.map(function(m,i){return '<option value="'+(i+1)+'"'+(state.month===i+1?' selected':'')+'>'+m+'</option>'}).join('')+'</select></label>':'')}
 function setYear(v){state.year=+v;route()}function setMonth(v){state.month=+v;route()}
+function gaugeMax(pct,tw){var mx=Math.max(pct||0,tw||0)*1.15;return Math.max(6,Math.ceil(mx/2)*2)}
 function heatCls(p){if(p==null)return '';return p<=1?'h0':p<=1.75?'h1':p<=2.75?'h2':p<=4?'h3':'h4'}
 function renderDashboard(){var y=state.year,m=state.month;var R=computeRekap(y);
  function pick(a){return m>0?a[m-1]:a.reduce(function(x,z){return x+z},0)}
@@ -878,7 +879,7 @@ function renderDashboard(){var y=state.year,m=state.month;var R=computeRekap(y);
  function pick2(a){return pm>0?a[pm-1]:a.reduce(function(x,z){return x+z},0)}
  var cur={total:pick(R.V.total),sub:pick(R.V.subtotalProduksi),tamb:pick(R.V.tambahan)+pick(R.V.tambahRmfg),omset:pick(R.V.omset),rmfg:pick(R.V.subtotalRmfg)};
  var prev={total:pick2(R2.V.total),sub:pick2(R2.V.subtotalProduksi),omset:pick2(R2.V.omset)};
- var pct=cur.omset>0?cur.total/cur.omset*100:null;var prevPct=prev.omset>0?prev.total/prev.omset*100:null;var tw=DB.settings.targetWaste;
+ var pct=cur.omset>0?cur.total/cur.omset*100:null;var prevPct=prev.omset>0?prev.total/prev.omset*100:null;var tw=DB.settings.targetWaste;var gm=gaugeMax(pct,tw);
  var perLbl=m>0?MONTHS[m-1]+' '+y:'Tahun '+y;
  function delta(c,p,gu){if(!p)return '<span class="delta d-mut">'+I('info')+' n/a</span>';var d=(c-p)/p*100,up=d>=0,g=gu?up:!up;return '<span class="delta '+(g?'d-good':'d-bad')+'">'+I(up?'trendUp':'trendDown')+' '+(up?'+':'')+d.toLocaleString('id-ID',{maximumFractionDigits:1})+'%</span>'}
  var nTamb=DB.tx.tambahan.filter(function(t){return t.tgl.startsWith(String(y))&&(m===0||+t.tgl.slice(5,7)===m)}).length;
@@ -890,8 +891,8 @@ function renderDashboard(){var y=state.year,m=state.month;var R=computeRekap(y);
  delta(cur.total,prev.total,false)+'<span>· Omset <span class="mono">'+fmtRp(cur.omset)+'</span></span></div>'+
  (cur.rmfg>0?'<div class="hero-note">Belum termasuk RM-FG: '+fmtRp(cur.rmfg)+'</div>':'')+'</div>'+
  '<div class="meter-w"><div class="meter-cap"><span>Gauge</span><b class="mono">'+(pct==null?'—':fmtPct(pct))+' / '+fmtPct(tw)+'</b></div>'+
- '<div class="meter"><div class="meter-fill'+(pct!=null&&pct<=tw?' ok':'')+'" id="meterFill" style="width:0%"></div><div class="meter-tick" style="left:'+(tw/6*100)+'%"></div></div>'+
- '<div class="meter-lbl"><span>0%</span><span>'+fmtPct(tw)+'</span><span>6%</span></div></div>'+
+ '<div class="meter"><div class="meter-fill'+(pct!=null&&pct<=tw?' ok':'')+'" id="meterFill" style="width:0%"></div><div class="meter-tick" style="left:'+(tw/gm*100)+'%"></div></div>'+
+ '<div class="meter-lbl" style="position:relative;height:14px"><span>0%</span><span style="position:absolute;left:'+(tw/gm*100)+'%;transform:translateX(-50%)">'+fmtPct(tw)+'</span><span>'+gm+'%</span></div></div>'+
  '<div class="mstrip">'+strip+'</div><div class="mlegend"><span>Rendah</span><span class="sw"><i class="h0"></i><i class="h1"></i><i class="h2"></i><i class="h3"></i><i class="h4"></i></span><span>Tinggi</span></div></section>'+
  '<section class="grid kpis"><div class="card kpi"><div class="kpi-l">Subtotal Waste Produksi</div><div class="kpi-v" data-cup="'+cur.sub+'" data-fmt="rp">Rp 0</div><div class="kpi-s">'+delta(cur.sub,prev.sub,false)+'<span class="mono">'+(cur.omset>0?fmtPct(cur.sub/cur.omset*100):'—')+'</span></div></div>'+
  '<div class="card kpi"><div class="kpi-l">Tambahan Bahan</div><div class="kpi-v" data-cup="'+cur.tamb+'" data-fmt="rp">Rp 0</div><div class="kpi-s">'+fmtID(nTamb)+' entri</div></div>'+
@@ -991,7 +992,7 @@ function dashInit(){runCountUps();drawTrend();drawDonut()}
 function runCountUps(){document.querySelectorAll('[data-cup]').forEach(function(el){var target=+el.dataset.cup,fmt=el.dataset.fmt,t0=performance.now(),d=850;
  function fmtV(v){return fmt==='rp'?fmtRp(v):fmtID(v)}requestAnimationFrame(function st(t){var p=Math.min(1,(t-t0)/d),e=1-Math.pow(1-p,3);el.textContent=fmtV(target*e);if(p<1)requestAnimationFrame(st)})});
  var mf=byId('meterFill');if(mf){var R=computeRekap(state.year),m=state.month;var tot=m>0?R.V.total[m-1]:R.Y.total,oms=m>0?R.V.omset[m-1]:R.Y.omset;
-  var pct=oms>0?tot/oms*100:0;requestAnimationFrame(function(){mf.style.width=Math.min(pct/6*100,100)+'%'})}}
+  var pct=oms>0?tot/oms*100:0;requestAnimationFrame(function(){mf.style.width=Math.min(pct/gaugeMax(pct,DB.settings.targetWaste)*100,100)+'%'})}}
 function drawTrend(){var cv=byId('chTrend');if(!cv||typeof Chart==='undefined')return;var R=computeRekap(state.year),S=seriesOf(R);
  var pctLine=S.total.map(function(v,i){return S.omset[i]>0?+(v/S.omset[i]*100).toFixed(2):null});var tw=DB.settings.targetWaste;
  function bar(l,d,c){return {label:l,data:d,backgroundColor:c,stack:'w',borderRadius:2,maxBarThickness:26}}
