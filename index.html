@@ -883,8 +883,15 @@ function renderDashboard(){var y=state.year,m=state.month;var R=computeRekap(y);
  '<div class="card kpi"><div class="kpi-l">Omset</div><div class="kpi-v" data-cup="'+cur.omset+'" data-fmt="rp">Rp 0</div><div class="kpi-s">'+delta(cur.omset,prev.omset,true)+'</div></div></section>'+
  '<section class="grid g2"><div class="card"><div class="card-h"><h3>Tren Waste — '+y+'</h3><span class="chip">batas '+fmtPct(tw)+'</span></div><div class="chart-box"><canvas id="chTrend"></canvas></div></div>'+
  '<div class="card"><div class="card-h"><h3>Komposisi — '+perLbl+'</h3></div><div class="chart-box"><canvas id="chDonut"></canvas></div></div></section>'+
- '<section class="grid g2b"><div class="card"><div class="card-h"><h3>Syarat — '+perLbl+'</h3>'+I('target')+'</div><div class="card-b"><div class="srows">'+syaratChips()+'</div></div></div>'+
+ topSection(perLbl)+'<section class="grid g2b"><div class="card"><div class="card-h"><h3>Syarat — '+perLbl+'</h3>'+I('target')+'</div><div class="card-b"><div class="srows">'+syaratChips()+'</div></div></div>'+
  '<div class="card"><div class="card-h"><h3>Transaksi Terbaru</h3>'+I('clock')+'</div><div class="rlist">'+recentList()+'</div></div></section></div>'}
+function topCard(k,lbl){var y=state.year,m=state.month,g={};
+ DB.tx[k].forEach(function(t){if(!t.tgl.startsWith(String(y))||(m>0&&+t.tgl.slice(5,7)!==m))return;var key=String(t.produk||'-').trim().toUpperCase(),v=TX[k].val(t)||0;
+  var o=g[key]||(g[key]={n:String(t.produk||'-').trim(),v:0,c:0});o.v+=v;o.c++});
+ var arr=Object.keys(g).map(function(x){return g[x]}).sort(function(a,b){return b.v-a.v}).slice(0,10),mx=arr.length?arr[0].v:0,col={tambahan:'#E8590C',kurang:'#B8740A',cupk:'#C2255C',retur:'#0E9384'}[k];
+ var body=arr.length?arr.map(function(o,i){return '<div class="ritem"><span class="mono" style="width:22px;color:var(--faint)">'+(i+1)+'</span><div class="rprod"><div>'+esc(o.n)+'</div><span class="rjo">'+fmtID(o.c)+' entri</span><div style="height:3px;border-radius:2px;margin-top:4px;background:'+col+';opacity:.35;width:'+(mx>0?Math.max(3,o.v/mx*100):3)+'%"></div></div><span class="rval">'+fmtRp(o.v)+'</span></div>'}).join(''):'<div class="empty">'+I('inbox')+'<p>Belum ada data pada periode ini.</p></div>';
+ return '<div class="card"><div class="card-h"><h3>Top 10 '+TX[k].sheet+' — '+lbl+'</h3></div><div class="rlist">'+body+'</div></div>'}
+function topSection(lbl){return '<section class="grid g2">'+topCard('tambahan',lbl)+topCard('kurang',lbl)+'</section><section class="grid g2">'+topCard('retur',lbl)+topCard('cupk',lbl)+'</section>'}
 function syaratChips(){var y=state.year,m=state.month,E=evalSyarat(y),s=DB.settings;var w,ot,rc;
  if(m>0){w=E.waste[m-1];ot=E.ot[m-1];rc=E.ret[m-1]}else{w=E.PY.waste;ot=E.PY.ot;rc=E.ret.reduce(function(a,b){return a+b},0)}
  function mk(l,v,t,fmt){var cls='',pill;if(v==null){pill='<span class="pill pill-mut">—</span>'}else{var ok=v<=t;cls=ok?'ok':'no';pill='<span class="pill '+(ok?'pill-ok':'pill-bad')+'">'+(ok?'Patuh':'Melebihi')+'</span>'}
@@ -1063,7 +1070,7 @@ function renderRekap(mode){var y=state.year,R=computeRekap(y),tw=DB.settings.tar
  function cellPct(v,p,r){if(r.omset||!v)return '<td class="rc pc">—</td>';if(p==null)return '<td class="rc pc" title="Omset bulan ini belum diisi" style="opacity:.55">n/a</td>';
   if(r.tot)return '<td class="rc pc" style="color:'+(p<=tw?'#8CE99A':'#FF8787')+'">'+fmtPct(p)+'</td>';
   return '<td class="rc pc '+(r.info?'':heatCls(p))+'">'+fmtPct(p)+'</td>'}
- var lay=rekapLayoutVisible(R);if(mode==='pct'){lay=lay.filter(function(r){return r.k!=='biayaProof'});lay=lay.filter(function(r,i){return !(r.sep&&(i===lay.length-1||lay[i+1].sep))})}
+ var lay=rekapLayoutVisible(R);if(true){lay=lay.filter(function(r){return r.k!=='biayaProof'});lay=lay.filter(function(r,i){return !(r.sep&&(i===lay.length-1||lay[i+1].sep))})}
  var rows=lay.map(function(r){if(r.sep)return '<tr class="rsep"><td colspan="14">— '+r.sep+' —</td></tr>';
   var vals=R.V[r.k],pcts=r.omset?Array(12).fill(null):R.P[r.k];
   var cells=vals.map(function(v,i){return mode==='full'?cellFull(v,pcts[i],r):cellPct(v,pcts[i],r)}).join('');
