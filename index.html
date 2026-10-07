@@ -908,9 +908,17 @@ function aiCard(){
  return '<section class="grid"><div class="card"><div class="card-h"><h3>Asisten Analisa AI</h3></div><div class="card-b"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="aiRun(\'ringkasan\')">Analisa periode ini</button><button class="btn" onclick="aiRun(\'top\')">Jelaskan Top 10</button></div>'+
  '<div style="display:flex;gap:8px;margin-top:10px"><input class="input" id="aiQ" placeholder="Contoh: bandingkan Domperidone, tambahan bahan 2026 per bulan, menurun atau tidak?" style="flex:1" onkeydown="if(event.key===\'Enter\')aiRun(\'tanya\')"><button class="btn" onclick="aiRun(\'tanya\')">Tanya</button></div>'+
  '<div id="aiOut" style="margin-top:12px;line-height:1.65"></div><p style="margin-top:10px;font-size:12px;color:var(--faint)">Jawaban hanya berdasarkan data di aplikasi ini. Penyebab yang disebut adalah dugaan dan perlu dipastikan di lapangan.</p></div></div></section>'}
+var AI_PAGES=[],AI_PG=0;
+function aiFmt(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}
+function aiSplit(t,max){var lines=String(t).split('\n'),pages=[],cur='';lines.forEach(function(l){if(cur&&(cur.length+l.length+1)>max){pages.push(cur);cur=l}else cur+=(cur?'\n':'')+l});if(cur.trim())pages.push(cur);return pages.length?pages:['']}
+function aiShow(t){AI_PAGES=aiSplit(t,1800);AI_PG=0;aiRender()}
+function aiRender(){var out=byId('aiOut'),n=AI_PAGES.length,h='<div>'+aiFmt(AI_PAGES[AI_PG])+'</div>';
+ if(n>1)h+='<div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn" onclick="aiPage(-1)"'+(AI_PG===0?' disabled':'')+'>\u2039 Sebelumnya</button><span class="mono">Halaman '+(AI_PG+1)+' / '+n+'</span><button class="btn" onclick="aiPage(1)"'+(AI_PG===n-1?' disabled':'')+'>Berikutnya \u203a</button></div>';
+ out.innerHTML=h}
+function aiPage(d){var p=AI_PG+d;if(p<0||p>=AI_PAGES.length)return;AI_PG=p;aiRender();byId('aiOut').scrollIntoView({behavior:'smooth',block:'nearest'})}
 async function aiRun(mode){var q=mode==='tanya'?(byId('aiQ').value||'').trim():'';if(mode==='tanya'&&!q){toast('Tulis pertanyaan dulu.','err');return}
  var out=byId('aiOut');out.innerHTML='<span class="mono">Menganalisa…</span>';
- try{var r=await sbAdmin({mode:mode,question:q,data:aiData(q)},'analisa-ai');out.innerHTML=esc(r.text).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}catch(e){out.innerHTML='';toast('Gagal: '+sbErr(e),'err')}}
+ try{var r=await sbAdmin({mode:mode,question:q,data:aiData(q)},'analisa-ai');aiShow(r.text)}catch(e){out.innerHTML='';toast('Gagal: '+sbErr(e),'err')}}
 function topCard(k,lbl){var y=state.year,m=state.month,g={};
  DB.tx[k].forEach(function(t){if(!t.tgl.startsWith(String(y))||(m>0&&+t.tgl.slice(5,7)!==m))return;var key=String(t.produk||'-').trim().toUpperCase(),v=TX[k].val(t)||0;
   var o=g[key]||(g[key]={n:String(t.produk||'-').trim(),v:0,c:0});o.v+=v;o.c++});
