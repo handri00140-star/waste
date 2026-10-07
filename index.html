@@ -419,6 +419,7 @@ alert:'<path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 
 info:'<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>',
 target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>',
 trendUp:'<path d="m22 7-8.5 8.5-4-4L2 19"/><path d="M16 7h6v6"/>',
+sparkle:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
 trendDown:'<path d="m22 17-8.5-8.5-4 4L2 5"/><path d="M16 17h6v-6"/>',
 inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.4 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.4-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.8 1.1Z"/>',
 db:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
@@ -485,6 +486,7 @@ var PAGES={
  lengkap:{t:'Laporan Lengkap',s:'Rekap tahunan — nilai rupiah & persentase terhadap omset.'},
  persen:{t:'Laporan Persen',s:'Rekap tahunan dalam persen terhadap omset + evaluasi syarat.'},
  tahunan:{t:'Perbandingan Tahunan',s:'Pilih tahun dievaluasi & pembanding.'},
+ analisa:{t:'Analisa AI',s:'Ringkasan, penjelasan Top 10, dan tanya jawab dari data waste.'},
  tambahan:{t:'Tambahan Bahan',s:'Tambahan bahan/kertas per JO · nilai = (+) Druk × Harga × Isi.'},
  kurang:{t:'Kurang Qty',s:'Kekurangan kuantitas hasil produksi per JO.'},
  cupk:{t:'CUPK',s:'Catatan biaya CUPK per JO & departemen.'},
@@ -494,10 +496,10 @@ var PAGES={
  import:{t:'Import Excel',s:'Perbarui data dari file Excel — tanpa perlu mengedit file.'},
  pengaturan:{t:'Pengaturan',s:'Profil, target/syarat, akun, dan data.'}};
 var NAV=[
- {group:'Utama',items:['dashboard','lengkap','persen','tahunan']},
+ {group:'Utama',items:['dashboard','lengkap','persen','tahunan','analisa']},
  {group:'Transaksi',items:['tambahan','kurang','cupk','retur','daftar']},
  {group:'Administrasi',items:['manual','import','pengaturan']}];
-var PAGE_ICON={dashboard:'grid',lengkap:'table',persen:'percent',tahunan:'trendUp',tambahan:'filePlus',kurang:'minCircle',cupk:'rotate',retur:'undo',daftar:'table',manual:'pencil',import:'upload',pengaturan:'sliders'};
+var PAGE_ICON={dashboard:'grid',lengkap:'table',persen:'percent',tahunan:'trendUp',analisa:'sparkle',tambahan:'filePlus',kurang:'minCircle',cupk:'rotate',retur:'undo',daftar:'table',manual:'pencil',import:'upload',pengaturan:'sliders'};
 var TX={
  tambahan:{key:'tambahan',title:'Tambahan Bahan (Kertas)',sheet:'Tambahan',desc:'Nilai = (+) Druk × Harga Jual × Isi',calcLabel:'HARGA (+) = Druk × Harga × Isi',
   val:function(t){return (+t.druk||0)*(+t.harga||0)*(+t.isi||0)},
@@ -693,7 +695,7 @@ function isAdmin(){var u=curUser();return !!u&&u.role==='admin'}
 function permLvl(mod){var u=curUser();if(!u)return 0;if(u.role==='admin')return 3;return PERM_RANK[(u.perms||{})[mod]]||0}
 function can(mod,need){return permLvl(mod)>=PERM_RANK[need]}
 function requirePerm(mod,need){if(can(mod,need))return true;toast('Akses terbatas — Anda tidak memiliki hak '+(need==='edit'?'edit':need==='input'?'input':'lihat')+' untuk menu ini.','err');return false}
-function pageAllowed(p){if(p==='pengaturan')return isAdmin();for(var i=0;i<PERM_MODS.length;i++)if(PERM_MODS[i].k===p)return can(p,'view');return true}
+function pageAllowed(p){if(p==='pengaturan')return isAdmin();if(p==='analisa')return can('dashboard','view');for(var i=0;i<PERM_MODS.length;i++)if(PERM_MODS[i].k===p)return can(p,'view');return true}
 function firstAllowedPage(){for(var g=0;g<NAV.length;g++)for(var i=0;i<NAV[g].items.length;i++)if(pageAllowed(NAV[g].items[i]))return NAV[g].items[i];return null}
 function canMasterExport(){return ['lengkap','persen','tambahan','kurang','cupk','retur'].every(function(k){return can(k,'view')})}
 function requireAdmin(){
@@ -847,12 +849,12 @@ function route(){if(!SESSION)return;var p=(location.hash||'').replace(/^#\//,'')
  state.page=p;closeSb();document.querySelectorAll('.nav-item').forEach(function(a){a.classList.toggle('active',a.dataset.p===p)});
  byId('tbTitle').textContent=PAGES[p].t;byId('tbSub').textContent=PAGES[p].s;byId('tbPeriod').innerHTML=periodHTML();destroyCharts();window.scrollTo(0,0);
  var v=byId('view');
- if(p==='dashboard')v.innerHTML=renderDashboard();else if(p==='lengkap')v.innerHTML=renderRekap('full');
+ if(p==='dashboard')v.innerHTML=renderDashboard();else if(p==='analisa')v.innerHTML=aiCard();else if(p==='lengkap')v.innerHTML=renderRekap('full');
  else if(p==='persen')v.innerHTML=renderRekap('pct');else if(p==='tahunan')v.innerHTML=renderTahunan();
  else if(p==='daftar')v.innerHTML=renderDaftar();else if(TX[p])v.innerHTML=renderTx(p);else if(p==='manual')v.innerHTML=renderManual();else if(p==='import')v.innerHTML=renderImport();else if(p==='pengaturan')v.innerHTML=renderSettings();
  if(p==='dashboard')dashInit();if(p==='tahunan')initTahunanCharts();if(TX[p])renderTxZone(p);if(p==='daftar')renderDfZone();if(p==='manual')updateManualTotals()}
 window.addEventListener('hashchange',route);
-function periodHTML(){var years=dataYears();var withMonth=['dashboard','tambahan','kurang','cupk','retur','daftar'].indexOf(state.page)>=0;
+function periodHTML(){var years=dataYears();var withMonth=['dashboard','analisa','tambahan','kurang','cupk','retur','daftar'].indexOf(state.page)>=0;
  return '<label class="select">'+I('calendar')+'<select onchange="setYear(this.value)">'+years.map(function(y){return '<option value="'+y+'"'+(y===state.year?' selected':'')+'>'+y+'</option>'}).join('')+'</select></label>'+
  (withMonth?'<label class="select">'+I('filter')+'<select onchange="setMonth(+this.value)"><option value="0"'+(state.month===0?' selected':'')+'>Semua Bulan</option>'+MONTHS.map(function(m,i){return '<option value="'+(i+1)+'"'+(state.month===i+1?' selected':'')+'>'+m+'</option>'}).join('')+'</select></label>':'')}
 function setYear(v){state.year=+v;route()}function setMonth(v){state.month=+v;route()}
@@ -883,7 +885,7 @@ function renderDashboard(){var y=state.year,m=state.month;var R=computeRekap(y);
  '<div class="card kpi"><div class="kpi-l">Omset</div><div class="kpi-v" data-cup="'+cur.omset+'" data-fmt="rp">Rp 0</div><div class="kpi-s">'+delta(cur.omset,prev.omset,true)+'</div></div></section>'+
  '<section class="grid g2"><div class="card"><div class="card-h"><h3>Tren Waste — '+y+'</h3><span class="chip">batas '+fmtPct(tw)+'</span></div><div class="chart-box"><canvas id="chTrend"></canvas></div></div>'+
  '<div class="card"><div class="card-h"><h3>Komposisi — '+perLbl+'</h3></div><div class="chart-box"><canvas id="chDonut"></canvas></div></div></section>'+
- aiCard()+topSection(perLbl)+'<section class="grid g2b"><div class="card"><div class="card-h"><h3>Syarat — '+perLbl+'</h3>'+I('target')+'</div><div class="card-b"><div class="srows">'+syaratChips()+'</div></div></div>'+
+ topSection(perLbl)+'<section class="grid g2b"><div class="card"><div class="card-h"><h3>Syarat — '+perLbl+'</h3>'+I('target')+'</div><div class="card-b"><div class="srows">'+syaratChips()+'</div></div></div>'+
  '<div class="card"><div class="card-h"><h3>Transaksi Terbaru</h3>'+I('clock')+'</div><div class="rlist">'+recentList()+'</div></div></section></div>'}
 function r2(v){return v==null?null:Math.round(v*100)/100}
 var AI_CATS=['tambahan','kurang','cupk','retur','cetak','pons','finishing','overtime','ekspedisi','wbp'];
