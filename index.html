@@ -334,6 +334,17 @@ table.rk.yoy .th-lbl{min-width:205px}
 .hero{grid-template-columns:1fr}.tb-title p{display:none}}
 @media(max-width:560px){.kpis{grid-template-columns:1fr}.period select{padding:7px 6px 7px 26px;font-size:11.5px}.fgrid{grid-template-columns:1fr}}
 .pm-tbl{width:100%;border-collapse:collapse;font-size:12.5px;border:1px solid var(--line);border-radius:10px;overflow:hidden}.pm-tbl th{background:var(--surface2);font-size:10.3px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;padding:8px;border-bottom:1px solid var(--line)}.pm-tbl td{padding:7px 8px;border-bottom:1px solid var(--line2)}.pm-tbl td:not(:first-child),.pm-tbl th:not(:first-child){text-align:center;width:72px}.pm-tbl input[type=radio]{width:16px;height:16px;cursor:pointer;accent-color:#1B1E24}.pm-tbl .pm-g td{background:var(--surface2);font-size:10.3px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;text-align:left!important}
+.trn-i{border-bottom:1px solid var(--line2)}.trn-i:last-child{border-bottom:none}
+.trn-i>summary{display:flex;align-items:center;gap:11px;padding:10.5px 18px;cursor:pointer;list-style:none;flex-wrap:wrap}
+.trn-i>summary::-webkit-details-marker{display:none}
+.trn-i>summary:hover{background:var(--surface2)}
+.trn-b{display:flex;gap:6px;flex-wrap:wrap}
+.trn-d{padding:4px 18px 14px 51px;overflow-x:auto}
+.trn-t{border-collapse:collapse;font-size:12px;min-width:320px}
+.trn-t th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 16px 6px 0;border-bottom:1px solid var(--line)}
+.trn-t td{padding:6px 16px 6px 0;border-bottom:1px solid var(--line2)}
+.trn-t .num{text-align:right}
+.trn-note{padding:12px 18px;font-size:12.5px;color:var(--muted);line-height:1.6;border-bottom:1px solid var(--line2)}
 </style>
 </head>
 <body>
@@ -487,6 +498,8 @@ var PAGES={
  persen:{t:'Laporan Persen',s:'Rekap tahunan dalam persen terhadap omset + evaluasi syarat.'},
  tahunan:{t:'Perbandingan Tahunan',s:'Pilih tahun dievaluasi & pembanding.'},
  analisa:{t:'Analisa AI',s:'Ringkasan, penjelasan Top 10, dan tanya jawab dari data waste.'},
+ tren:{t:'Tren Kejadian',s:'Top 10 per tahun · naik, turun, atau sama berdasarkan urutan kejadian · dengan harga.'},
+ trenq:{t:'Tren Kejadian (Tanpa Harga)',s:'Top 10 per tahun · naik, turun, atau sama berdasarkan qty per kejadian · tanpa harga.'},
  tambahan:{t:'Tambahan Bahan',s:'Tambahan bahan/kertas per JO · nilai = (+) Druk × Harga × Isi.'},
  kurang:{t:'Kurang Qty',s:'Kekurangan kuantitas hasil produksi per JO.'},
  cupk:{t:'CUPK',s:'Catatan biaya CUPK per JO & departemen.'},
@@ -496,10 +509,10 @@ var PAGES={
  import:{t:'Import Excel',s:'Perbarui data dari file Excel — tanpa perlu mengedit file.'},
  pengaturan:{t:'Pengaturan',s:'Profil, target/syarat, akun, dan data.'}};
 var NAV=[
- {group:'Utama',items:['dashboard','lengkap','persen','tahunan','analisa']},
+ {group:'Utama',items:['dashboard','lengkap','persen','tahunan','analisa','tren','trenq']},
  {group:'Transaksi',items:['tambahan','kurang','cupk','retur','daftar']},
  {group:'Administrasi',items:['manual','import','pengaturan']}];
-var PAGE_ICON={dashboard:'grid',lengkap:'table',persen:'percent',tahunan:'trendUp',analisa:'sparkle',tambahan:'filePlus',kurang:'minCircle',cupk:'rotate',retur:'undo',daftar:'table',manual:'pencil',import:'upload',pengaturan:'sliders'};
+var PAGE_ICON={dashboard:'grid',lengkap:'table',persen:'percent',tahunan:'trendUp',analisa:'sparkle',tren:'trendUp',trenq:'filter',tambahan:'filePlus',kurang:'minCircle',cupk:'rotate',retur:'undo',daftar:'table',manual:'pencil',import:'upload',pengaturan:'sliders'};
 var TX={
  tambahan:{key:'tambahan',title:'Tambahan Bahan (Kertas)',sheet:'Tambahan',desc:'Nilai = (+) Druk × Harga Jual × Isi',calcLabel:'HARGA (+) = Druk × Harga × Isi',
   val:function(t){return (+t.druk||0)*(+t.harga||0)*(+t.isi||0)},
@@ -695,7 +708,7 @@ function isAdmin(){var u=curUser();return !!u&&u.role==='admin'}
 function permLvl(mod){var u=curUser();if(!u)return 0;if(u.role==='admin')return 3;return PERM_RANK[(u.perms||{})[mod]]||0}
 function can(mod,need){return permLvl(mod)>=PERM_RANK[need]}
 function requirePerm(mod,need){if(can(mod,need))return true;toast('Akses terbatas — Anda tidak memiliki hak '+(need==='edit'?'edit':need==='input'?'input':'lihat')+' untuk menu ini.','err');return false}
-function pageAllowed(p){if(p==='pengaturan')return isAdmin();if(p==='analisa')return can('dashboard','view');for(var i=0;i<PERM_MODS.length;i++)if(PERM_MODS[i].k===p)return can(p,'view');return true}
+function pageAllowed(p){if(p==='pengaturan')return isAdmin();if(p==='analisa')return can('dashboard','view');if(p==='tren')return can('dashboard','view');if(p==='trenq')return can('daftar','view');for(var i=0;i<PERM_MODS.length;i++)if(PERM_MODS[i].k===p)return can(p,'view');return true}
 function firstAllowedPage(){for(var g=0;g<NAV.length;g++)for(var i=0;i<NAV[g].items.length;i++)if(pageAllowed(NAV[g].items[i]))return NAV[g].items[i];return null}
 function canMasterExport(){return ['lengkap','persen','tambahan','kurang','cupk','retur'].every(function(k){return can(k,'view')})}
 function requireAdmin(){
@@ -849,7 +862,7 @@ function route(){if(!SESSION)return;var p=(location.hash||'').replace(/^#\//,'')
  state.page=p;closeSb();document.querySelectorAll('.nav-item').forEach(function(a){a.classList.toggle('active',a.dataset.p===p)});
  byId('tbTitle').textContent=PAGES[p].t;byId('tbSub').textContent=PAGES[p].s;byId('tbPeriod').innerHTML=periodHTML();destroyCharts();window.scrollTo(0,0);
  var v=byId('view');
- if(p==='dashboard')v.innerHTML=renderDashboard();else if(p==='analisa')v.innerHTML=aiCard();else if(p==='lengkap')v.innerHTML=renderRekap('full');
+ if(p==='dashboard')v.innerHTML=renderDashboard();else if(p==='analisa')v.innerHTML=aiCard();else if(p==='tren'||p==='trenq')v.innerHTML=renderTren(p);else if(p==='lengkap')v.innerHTML=renderRekap('full');
  else if(p==='persen')v.innerHTML=renderRekap('pct');else if(p==='tahunan')v.innerHTML=renderTahunan();
  else if(p==='daftar')v.innerHTML=renderDaftar();else if(TX[p])v.innerHTML=renderTx(p);else if(p==='manual')v.innerHTML=renderManual();else if(p==='import')v.innerHTML=renderImport();else if(p==='pengaturan')v.innerHTML=renderSettings();
  if(p==='dashboard')dashInit();if(p==='tahunan')initTahunanCharts();if(TX[p])renderTxZone(p);if(p==='daftar')renderDfZone();if(p==='manual')updateManualTotals()}
@@ -919,6 +932,42 @@ function aiPage(d){var p=AI_PG+d;if(p<0||p>=AI_PAGES.length)return;AI_PG=p;aiRen
 async function aiRun(mode){var q=mode==='tanya'?(byId('aiQ').value||'').trim():'';if(mode==='tanya'&&!q){toast('Tulis pertanyaan dulu.','err');return}
  var out=byId('aiOut');out.innerHTML='<span class="mono">Menganalisa…</span>';
  try{var r=await sbAdmin({mode:mode,question:q,data:aiData(q)},'analisa-ai');aiShow(r.text)}catch(e){out.innerHTML='';toast('Gagal: '+sbErr(e),'err')}}
+/* ---- Tren Kejadian: Top 10 per tahun, naik/turun/sama berdasarkan urutan kejadian (bukan per bulan) ---- */
+UI.tren={k:'tambahan'};UI.trenq={k:'tambahan'};
+var TREN_COL={tambahan:'#E8590C',kurang:'#B8740A',cupk:'#C2255C',retur:'#0E9384'};
+var TREN_UNIT={tambahan:'Druk',kurang:'Qty',cupk:'Qty',retur:'Qty'};
+var TREN_QTY={tambahan:function(t){return +t.druk||0},kurang:function(t){return +t.qty||0},cupk:function(t){return +t.qty||0},retur:function(t){return +t.qty||0}};
+function trenAvg(a){return a.length?a.reduce(function(x,y){return x+y},0)/a.length:0}
+function trenDir(v){var n=v.length;if(n<4)return null;var h=Math.floor(n/2),o=trenAvg(v.slice(0,h)),w=trenAvg(v.slice(n-h)),ch=o>0?(w-o)/o:(w>0?1:0);return {ch:ch,cls:Math.abs(ch)<0.05?'same':(ch>0?'up':'down')}}
+function trenFreq(d){if(d.length<4)return null;var g=[];for(var i=1;i<d.length;i++)g.push((Date.parse(d[i])-Date.parse(d[i-1]))/864e5);
+ var h=Math.floor(g.length/2),o=trenAvg(g.slice(0,h)),w=trenAvg(g.slice(g.length-h));if(!(o>0))return w>0?'jarang':'tetap';var r=w/o;return r<0.85?'sering':r>1.15?'jarang':'tetap'}
+function trenData(k,withRp){var y=String(state.year),g={};
+ DB.tx[k].forEach(function(t){if(!String(t.tgl).startsWith(y))return;var key=String(t.produk||'-').trim().toUpperCase(),o=g[key]||(g[key]={n:String(t.produk||'-').trim(),ev:[],rp:0,qty:0});
+  var e={tgl:t.tgl,jo:t.jo||'',rp:Math.round(TX[k].val(t)||0),qty:TREN_QTY[k](t)};o.ev.push(e);o.rp+=e.rp;o.qty+=e.qty});
+ var arr=Object.keys(g).map(function(x){return g[x]});
+ arr.forEach(function(o){o.ev.sort(function(a,b){return a.tgl<b.tgl?-1:a.tgl>b.tgl?1:0})});
+ arr.sort(withRp?function(a,b){return b.rp-a.rp}:function(a,b){return b.ev.length-a.ev.length||b.qty-a.qty});
+ return arr.slice(0,10)}
+function trenSpark(v,col){v=v.slice(-24);var mx=Math.max.apply(null,v)||1,w=6,gp=2,h=22;
+ return '<svg width="'+(v.length*(w+gp))+'" height="'+h+'" style="flex:none">'+v.map(function(x,i){var bh=Math.max(2,x/mx*h);return '<rect x="'+(i*(w+gp))+'" y="'+(h-bh)+'" width="'+w+'" height="'+bh+'" rx="1" fill="'+col+'" opacity=".8"/>'}).join('')+'</svg>'}
+function trenBadge(d,n){if(!d)return '<span class="pill pill-mut">Data belum cukup ('+n+' entri)</span>';
+ var l={up:'\u25B2 Naik',down:'\u25BC Turun',same:'\u2550 Sama'}[d.cls],c=d.cls==='up'?'pill-bad':d.cls==='down'?'pill-ok':'pill-mut';
+ return '<span class="pill '+c+'">'+l+(d.cls==='same'?'':' '+(d.ch>0?'+':'')+Math.round(d.ch*100)+'%')+'</span>'}
+function trenFreqBadge(f){if(!f)return '';return f==='sering'?'<span class="pill pill-bad">Makin sering</span>':f==='jarang'?'<span class="pill pill-ok">Makin jarang</span>':'<span class="pill pill-mut">Frekuensi tetap</span>'}
+function trenRow(o,i,k,withRp){var col=TREN_COL[k],vals=o.ev.map(function(e){return withRp?e.rp:e.qty}),n=o.ev.length,
+ total=withRp?fmtRp(o.rp):fmtID(o.qty)+' '+TREN_UNIT[k].toLowerCase(),
+ rows=o.ev.map(function(e,j){var v=vals[j],d='';if(j>0){var pv=vals[j-1];d=v>pv?'<span style="color:var(--bad)">\u25B2</span>':v<pv?'<span style="color:var(--good)">\u25BC</span>':'<span style="color:var(--muted)">\u2550</span>'}
+  return '<tr><td>'+fmtDateId(e.tgl)+'</td><td class="mono">'+esc(e.jo)+'</td><td class="num">'+(withRp?fmtRp(v):fmtID(v))+'</td><td>'+d+'</td></tr>'}).join('');
+ return '<details class="trn-i"><summary><span class="mono" style="width:22px;color:var(--faint)">'+(i+1)+'</span><div class="rprod" style="flex:1;min-width:150px"><div>'+esc(o.n)+'</div><span class="rjo">'+fmtID(n)+' entri</span></div>'+
+  trenSpark(vals,col)+'<div class="trn-b">'+trenBadge(trenDir(vals),n)+trenFreqBadge(trenFreq(o.ev.map(function(e){return e.tgl})))+'</div><span class="rval">'+total+'</span></summary>'+
+  '<div class="trn-d"><table class="trn-t"><thead><tr><th>Tgl</th><th>No JO</th><th class="num">'+(withRp?'Nilai':TREN_UNIT[k])+'</th><th>vs sebelumnya</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>'}
+function renderTren(p){var withRp=(p==='tren'),k=UI[p].k,y=state.year,arr=trenData(k,withRp);
+ var tabs=TXK.map(function(x){return '<button class="tab'+(k===x?' active':'')+'" onclick="trenTab(\''+p+'\',\''+x+'\')">'+TX[x].sheet+'</button>'}).join('');
+ var note=withRp?'Urutan berdasarkan <b>total nilai (Rp)</b> setahun. Tren dihitung dari <b>urutan kejadian</b>, bukan per bulan: rata-rata nilai separuh kejadian terakhir dibanding separuh sebelumnya (selisih di bawah 5% = Sama). Produk dengan kurang dari 4 entri belum dinilai. Klik satu baris untuk melihat tiap kejadian.'
+  :'<b>Tanpa harga.</b> Urutan berdasarkan <b>jumlah entri</b> setahun, lalu qty. Tren dihitung dari <b>urutan kejadian</b>, bukan per bulan: rata-rata qty separuh kejadian terakhir dibanding separuh sebelumnya (selisih di bawah 5% = Sama). Produk dengan kurang dari 4 entri belum dinilai. Klik satu baris untuk melihat tiap kejadian.';
+ var body=arr.length?arr.map(function(o,i){return trenRow(o,i,k,withRp)}).join(''):'<div class="empty">'+I('inbox')+'<p>Belum ada data pada tahun ini.</p></div>';
+ return '<section class="grid"><div class="card"><div class="card-h"><h3>Top 10 '+TX[k].sheet+' \u2014 Tahun '+y+(withRp?'':' \u00B7 tanpa harga')+'</h3><div class="tabs">'+tabs+'</div></div><div class="trn-note">'+note+'</div><div class="rlist trn">'+body+'</div></div></section>'}
+function trenTab(p,k){UI[p].k=k;byId('view').innerHTML=renderTren(p)}
 function topCard(k,lbl){var y=state.year,m=state.month,g={};
  DB.tx[k].forEach(function(t){if(!t.tgl.startsWith(String(y))||(m>0&&+t.tgl.slice(5,7)!==m))return;var key=String(t.produk||'-').trim().toUpperCase(),v=TX[k].val(t)||0;
   var o=g[key]||(g[key]={n:String(t.produk||'-').trim(),v:0,c:0});o.v+=v;o.c++});
