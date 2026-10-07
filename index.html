@@ -194,7 +194,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:12.6px;min-width:720px}
 .mcell span{font-family:var(--mono);font-size:11.5px;font-weight:600}
 .mcell.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(232,89,12,.25)}
 .mcell.sel b{color:var(--accent2)}
-.mlegend{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--faint)}
+.mlegend{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--faint);flex-wrap:wrap}.mlegend .lg{display:inline-flex;align-items:center;gap:5px;margin-right:6px}.mlegend .lg i{width:18px;height:8px;border-radius:2px;display:block}
 .mlegend .sw{display:flex;gap:2px}.mlegend .sw i{width:18px;height:8px;border-radius:2px;display:block}
 .kpis{grid-template-columns:repeat(3,1fr)}
 .kpi{padding:16px 18px}
@@ -872,6 +872,7 @@ function periodHTML(){var years=dataYears();var withMonth=['dashboard','analisa'
  (withMonth?'<label class="select">'+I('filter')+'<select onchange="setMonth(+this.value)"><option value="0"'+(state.month===0?' selected':'')+'>Semua Bulan</option>'+MONTHS.map(function(m,i){return '<option value="'+(i+1)+'"'+(state.month===i+1?' selected':'')+'>'+m+'</option>'}).join('')+'</select></label>':'')}
 function setYear(v){state.year=+v;route()}function setMonth(v){state.month=+v;route()}
 function gaugeMax(pct,tw){var mx=Math.max(pct||0,tw||0)*1.15;return Math.max(6,Math.ceil(mx/2)*2)}
+function heatTot(p,tw){if(p==null||!(tw>0))return '';var r=p/tw;return r<=1?'h0':r<=1.5?'h1':r<=2?'h2':r<=3?'h3':'h4'}
 function heatCls(p){if(p==null)return '';return p<=1?'h0':p<=1.75?'h1':p<=2.75?'h2':p<=4?'h3':'h4'}
 function renderDashboard(){var y=state.year,m=state.month;var R=computeRekap(y);
  function pick(a){return m>0?a[m-1]:a.reduce(function(x,z){return x+z},0)}
@@ -879,11 +880,11 @@ function renderDashboard(){var y=state.year,m=state.month;var R=computeRekap(y);
  function pick2(a){return pm>0?a[pm-1]:a.reduce(function(x,z){return x+z},0)}
  var cur={total:pick(R.V.total),sub:pick(R.V.subtotalProduksi),tamb:pick(R.V.tambahan)+pick(R.V.tambahRmfg),omset:pick(R.V.omset),rmfg:pick(R.V.subtotalRmfg)};
  var prev={total:pick2(R2.V.total),sub:pick2(R2.V.subtotalProduksi),omset:pick2(R2.V.omset)};
- var pct=cur.omset>0?cur.total/cur.omset*100:null;var prevPct=prev.omset>0?prev.total/prev.omset*100:null;var tw=DB.settings.targetWaste;var gm=gaugeMax(pct,tw);
+ var pct=cur.omset>0?cur.total/cur.omset*100:null;var prevPct=prev.omset>0?prev.total/prev.omset*100:null;var tw=DB.settings.targetWaste;var gm=gaugeMax(pct,tw);var lg=[['h0','\u2264 '+fmtPct(tw)],['h1','\u2264 '+fmtPct(tw*1.5)],['h2','\u2264 '+fmtPct(tw*2)],['h3','\u2264 '+fmtPct(tw*3)],['h4','> '+fmtPct(tw*3)]].map(function(a){return '<span class="lg"><i class="'+a[0]+'"></i>'+a[1]+'</span>'}).join('');
  var perLbl=m>0?MONTHS[m-1]+' '+y:'Tahun '+y;
  function delta(c,p,gu){if(!p)return '<span class="delta d-mut">'+I('info')+' n/a</span>';var d=(c-p)/p*100,up=d>=0,g=gu?up:!up;return '<span class="delta '+(g?'d-good':'d-bad')+'">'+I(up?'trendUp':'trendDown')+' '+(up?'+':'')+d.toLocaleString('id-ID',{maximumFractionDigits:1})+'%</span>'}
  var nTamb=DB.tx.tambahan.filter(function(t){return t.tgl.startsWith(String(y))&&(m===0||+t.tgl.slice(5,7)===m)}).length;
- var strip=R.P.total.map(function(p,i){var has=R.V.omset[i]>0||R.V.total[i]>0;var cls=(has&&p!=null)?heatCls(p):'';
+ var strip=R.P.total.map(function(p,i){var has=R.V.omset[i]>0||R.V.total[i]>0;var cls=(has&&p!=null)?heatTot(p,tw):'';
   return '<button class="mcell '+cls+(i+1===m?' sel':'')+'" onclick="setMonth('+(i+1)+')"><b>'+MONTHS_S[i]+'</b><span>'+(has&&p!=null?fmtPct(p):'—')+'</span></button>'}).join('');
  return '<div class="grid"><section class="card hero"><div class="hero-main"><div class="hero-label">Total Waste — '+perLbl+'</div>'+
  '<div class="hero-val" data-cup="'+cur.total+'" data-fmt="rp">Rp 0</div><div class="hero-meta">'+
@@ -893,7 +894,7 @@ function renderDashboard(){var y=state.year,m=state.month;var R=computeRekap(y);
  '<div class="meter-w"><div class="meter-cap"><span>Gauge</span><b class="mono">'+(pct==null?'—':fmtPct(pct))+' / '+fmtPct(tw)+'</b></div>'+
  '<div class="meter"><div class="meter-fill'+(pct!=null&&pct<=tw?' ok':'')+'" id="meterFill" style="width:0%"></div><div class="meter-tick" style="left:'+(tw/gm*100)+'%"></div></div>'+
  '<div class="meter-lbl" style="position:relative;height:14px"><span>0%</span><span style="position:absolute;left:'+(tw/gm*100)+'%;transform:translateX(-50%)">'+fmtPct(tw)+'</span><span>'+gm+'%</span></div></div>'+
- '<div class="mstrip">'+strip+'</div><div class="mlegend"><span>Rendah</span><span class="sw"><i class="h0"></i><i class="h1"></i><i class="h2"></i><i class="h3"></i><i class="h4"></i></span><span>Tinggi</span></div></section>'+
+ '<div class="mstrip">'+strip+'</div><div class="mlegend"><span>Warna kotak = waste thd omset (target '+fmtPct(tw)+'):</span>'+lg+'</div></section>'+
  '<section class="grid kpis"><div class="card kpi"><div class="kpi-l">Subtotal Waste Produksi</div><div class="kpi-v" data-cup="'+cur.sub+'" data-fmt="rp">Rp 0</div><div class="kpi-s">'+delta(cur.sub,prev.sub,false)+'<span class="mono">'+(cur.omset>0?fmtPct(cur.sub/cur.omset*100):'—')+'</span></div></div>'+
  '<div class="card kpi"><div class="kpi-l">Tambahan Bahan</div><div class="kpi-v" data-cup="'+cur.tamb+'" data-fmt="rp">Rp 0</div><div class="kpi-s">'+fmtID(nTamb)+' entri</div></div>'+
  '<div class="card kpi"><div class="kpi-l">Omset</div><div class="kpi-v" data-cup="'+cur.omset+'" data-fmt="rp">Rp 0</div><div class="kpi-s">'+delta(cur.omset,prev.omset,true)+'</div></div></section>'+
