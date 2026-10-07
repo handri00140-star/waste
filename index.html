@@ -824,7 +824,7 @@ async function sbFlush(){
    SB.usn[u.u]=uj}}
  }catch(e){toast('Gagal menyimpan ke server: '+sbErr(e),'err')}
  SB.busy=false;if(SB.again){SB.again=false;sbFlush()}}
-async function sbAdmin(body){var r=await SB.c.functions.invoke('kelola-user',{body:body});
+async function sbAdmin(body,fn){var r=await SB.c.functions.invoke(fn||'kelola-user',{body:body});
  if(r.error){var m=sbErr(r.error);try{if(r.error.context&&r.error.context.json){var j=await r.error.context.json();if(j&&j.error)m=j.error}}catch(e){}throw new Error(m)}
  if(r.data&&r.data.error)throw new Error(r.data.error);return r.data}
 async function sbLogin(em,pw){var r=await SB.c.auth.signInWithPassword({email:em,password:pw});if(r.error)throw r.error;return sbLoadAll(r.data.user.id)}
@@ -883,8 +883,27 @@ function renderDashboard(){var y=state.year,m=state.month;var R=computeRekap(y);
  '<div class="card kpi"><div class="kpi-l">Omset</div><div class="kpi-v" data-cup="'+cur.omset+'" data-fmt="rp">Rp 0</div><div class="kpi-s">'+delta(cur.omset,prev.omset,true)+'</div></div></section>'+
  '<section class="grid g2"><div class="card"><div class="card-h"><h3>Tren Waste — '+y+'</h3><span class="chip">batas '+fmtPct(tw)+'</span></div><div class="chart-box"><canvas id="chTrend"></canvas></div></div>'+
  '<div class="card"><div class="card-h"><h3>Komposisi — '+perLbl+'</h3></div><div class="chart-box"><canvas id="chDonut"></canvas></div></div></section>'+
- topSection(perLbl)+'<section class="grid g2b"><div class="card"><div class="card-h"><h3>Syarat — '+perLbl+'</h3>'+I('target')+'</div><div class="card-b"><div class="srows">'+syaratChips()+'</div></div></div>'+
+ aiCard()+topSection(perLbl)+'<section class="grid g2b"><div class="card"><div class="card-h"><h3>Syarat — '+perLbl+'</h3>'+I('target')+'</div><div class="card-b"><div class="srows">'+syaratChips()+'</div></div></div>'+
  '<div class="card"><div class="card-h"><h3>Transaksi Terbaru</h3>'+I('clock')+'</div><div class="rlist">'+recentList()+'</div></div></section></div>'}
+function r2(v){return v==null?null:Math.round(v*100)/100}
+var AI_CATS=['tambahan','kurang','cupk','retur','cetak','pons','finishing','overtime','ekspedisi','wbp'];
+function aiAnom(R){var out=[];for(var i=0;i<12;i++){if(R.V.omset[i]<=0&&R.V.total[i]>0)out.push(MONTHS[i]+': ada biaya waste '+fmtRp(R.V.total[i])+' tetapi omset belum diisi.')}
+ AI_CATS.forEach(function(c){var a=R.V[c].filter(function(v){return v>0}).sort(function(x,y){return x-y});if(a.length<4)return;var med=a[Math.floor(a.length/2)];
+  R.V[c].forEach(function(v,i){if(v>med*3&&v>5e6)out.push(MONTHS[i]+': '+c+' '+fmtRp(v)+' (±'+(v/med).toFixed(1)+'× median bulanan).')})});return out}
+function topArr(k){var y=state.year,m=state.month,g={};DB.tx[k].forEach(function(t){if(!t.tgl.startsWith(String(y))||(m>0&&+t.tgl.slice(5,7)!==m))return;var key=String(t.produk||'-').trim().toUpperCase(),o=g[key]||(g[key]={produk:String(t.produk||'-').trim(),entri:0,rp:0});o.entri++;o.rp+=Math.round(TX[k].val(t)||0)});
+ return Object.keys(g).map(function(x){return g[x]}).sort(function(a,b){return b.rp-a.rp}).slice(0,10)}
+function aiData(){var y=state.year,m=state.month,R=computeRekap(y),E=evalSyarat(y),s=DB.settings,bln=[];
+ for(var i=0;i<12;i++){if(!(R.V.omset[i]>0||R.V.total[i]>0))continue;var o={bulan:MONTHS[i],omset:Math.round(R.V.omset[i]),total_waste:Math.round(R.V.total[i]),persen_total:r2(R.P.total[i]),persen_waste_syarat:r2(E.waste[i]),persen_ot_syarat:r2(E.ot[i]),jumlah_retur:E.ret[i]};AI_CATS.forEach(function(c){o[c]=Math.round(R.V[c][i])});bln.push(o)}
+ var top={};TXK.forEach(function(k){top[k]=topArr(k)});
+ return {perusahaan:s.perusahaan,tahun:y,periode:m>0?MONTHS[m-1]+' '+y:'Tahun '+y,target:{waste_persen:s.targetWaste,retur_per_bulan:s.targetRetur,ot_persen:s.targetOvertime},keterangan:'angka rupiah; persen thd omset; syarat waste = tambahan+kurang+cupk+retur dst',bulanan:bln,top10_periode:top,kejanggalan_otomatis:aiAnom(R)}}
+function aiCard(){var an=aiAnom(computeRekap(state.year));
+ return '<section class="grid"><div class="card"><div class="card-h"><h3>Asisten Analisa AI</h3></div><div class="card-b"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="aiRun(\'ringkasan\')">Analisa periode ini</button><button class="btn" onclick="aiRun(\'top\')">Jelaskan Top 10</button></div>'+
+ '<div style="display:flex;gap:8px;margin-top:10px"><input class="input" id="aiQ" placeholder="Tanya data, mis. produk apa paling sering retur?" style="flex:1" onkeydown="if(event.key===\'Enter\')aiRun(\'tanya\')"><button class="btn" onclick="aiRun(\'tanya\')">Tanya</button></div>'+
+ (an.length?'<div style="margin-top:12px"><b>Kejanggalan data (otomatis)</b><ul style="margin:6px 0 0 18px;line-height:1.6">'+an.slice(0,8).map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul></div>':'<div style="margin-top:12px;color:var(--faint)">Tidak ada kejanggalan data yang terdeteksi otomatis.</div>')+
+ '<div id="aiOut" style="margin-top:12px;line-height:1.65"></div><p style="margin-top:10px;font-size:12px;color:var(--faint)">AI hanya menafsirkan angka dari aplikasi. Penyebab yang disebut adalah dugaan dan perlu dipastikan di lapangan.</p></div></div></section>'}
+async function aiRun(mode){var q=mode==='tanya'?(byId('aiQ').value||'').trim():'';if(mode==='tanya'&&!q){toast('Tulis pertanyaan dulu.','err');return}
+ var out=byId('aiOut');out.innerHTML='<span class="mono">Menganalisa…</span>';
+ try{var r=await sbAdmin({mode:mode,question:q,data:aiData()},'analisa-ai');out.innerHTML=esc(r.text).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}catch(e){out.innerHTML='';toast('Gagal: '+sbErr(e),'err')}}
 function topCard(k,lbl){var y=state.year,m=state.month,g={};
  DB.tx[k].forEach(function(t){if(!t.tgl.startsWith(String(y))||(m>0&&+t.tgl.slice(5,7)!==m))return;var key=String(t.produk||'-').trim().toUpperCase(),v=TX[k].val(t)||0;
   var o=g[key]||(g[key]={n:String(t.produk||'-').trim(),v:0,c:0});o.v+=v;o.c++});
