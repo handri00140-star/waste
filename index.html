@@ -88,8 +88,8 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
 .brand b{color:#F3F1EA;font-size:15.5px}
 .brand span{display:block;font-size:10.5px;color:#7C828E;margin-top:1px;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nav{flex:1;overflow-y:auto;padding:10px 10px 14px}
-.nav-g{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#646975;font-weight:700;padding:10px 10px 4px}
-.nav-item{display:flex;align-items:center;gap:11px;padding:6px 11px;border-radius:9px;font-size:13.2px;color:#AEB3BD;position:relative;transition:.13s;margin-bottom:1px}
+.nav-g{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#646975;font-weight:700;padding:14px 10px 6px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:8.5px 11px;border-radius:9px;font-size:13.2px;color:#AEB3BD;position:relative;transition:.13s;margin-bottom:1px}
 .nav-item:hover{background:rgba(255,255,255,.055);color:#E8EAEE}
 .nav-item.active{background:rgba(232,89,12,.14);color:#fff}
 .nav-item.active::before{content:"";position:absolute;left:-10px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
@@ -508,7 +508,7 @@ var PAGES={
  trenq:{t:'Tren Kejadian (Tanpa Harga)',s:'Top 10 per tahun · naik, turun, atau sama berdasarkan qty per kejadian · tanpa harga.'},
  penyebab:{t:'Penyebab Tambah Bahan',s:'Rekap penyebab tambah bahan terbesar · per bulan atau setahun · urut dari tertinggi.'},
  lkh:{t:'LKH — Kendala Produksi',s:'Kejadian kendala dari Laporan Kerja Harian · per kendala, waste, mesin, tahapan, dan JO.'},
- banding:{t:'Banding Tambah Bahan vs LKH',s:'Penyebab awal saat tambah bahan dibandingkan dengan kendala akhir di LKH · per JO.'},
+ banding:{t:'Banding Tambah Bahan vs LKH',s:'Alasan tambah bahan dibandingkan dengan kendala yang dilaporkan di LKH mesin cetak untuk JO yang sama.'},
  tambahan:{t:'Tambahan Bahan',s:'Tambahan bahan/kertas per JO · nilai = (+) Druk × Harga × Isi.'},
  kurang:{t:'Kurang Qty',s:'Kekurangan kuantitas hasil produksi per JO.'},
  cupk:{t:'CUPK',s:'Catatan biaya CUPK per JO & departemen.'},
@@ -1025,111 +1025,6 @@ function renderPenyebab(){var y=state.year,m=state.month,by=UI.pnb.by,G=pnbGroup
   rows.push('<tr'+(mm===m?' style="background:var(--surface2)"':'')+'><td><b>'+MONTHS[mm-1]+'</b></td><td class="mono">'+fmtID(GM.totD)+' druk<br><span style="color:var(--muted)">'+fmtRp(GM.tot)+'</span></td><td>'+pnbCell(GM.named[0],GM,by)+'</td><td>'+pnbCell(GM.named[1],GM,by)+'</td><td>'+pnbCell(GM.named[2],GM,by)+'</td><td class="mono" style="color:var(--muted)">'+fmtPct(GM.kRp/GM.tot*100)+'</td></tr>')}
  var c2='<section class="grid"><div class="card"><div class="card-h"><h3>Penyebab terbesar per bulan \u2014 '+y+'</h3></div><div class="trn-d" style="padding:6px 18px 16px"><table class="trn-t" style="min-width:820px"><thead><tr><th>Bulan</th><th>Total tambah bahan</th><th>Terbesar ke-1</th><th>Terbesar ke-2</th><th>Terbesar ke-3</th><th>Belum diisi/dirinci</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div></div></section>';
  return c1+c2}
-/* ---- Banding: penyebab awal (Tambah Bahan) vs kendala akhir (LKH) ---- */
-UI.bd={f:'all',q:'',lim:40,c:'',k:''};
-var BD_STOP={druk:1,kertas:1,bahan:1,tambah:1,tambahan:1,karena:1,dan:1,yang:1,dari:1,untuk:1,pada:1,ada:1,tidak:1,jo:1,pcs:1,qty:1,lembar:1,sheet:1,kena:1,jadi:1,agar:1,saat:1,waktu:1,belum:1};
-function bdTok(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(function(w){return w.length>=3&&!/^\d+$/.test(w)&&!BD_STOP[w]})}
-function bdSame(a,b){if(a===b)return true;var s=a.length<b.length?a:b,l=s===a?b:a;return s.length>=4&&l.indexOf(s)===0}
-function bdMatch(cause,kend){var ta=bdTok(cause),tb=bdTok(kend);for(var i=0;i<ta.length;i++)for(var j=0;j<tb.length;j++)if(bdSame(ta[i],tb[j]))return true;return false}
-function bdBuild(y,m){var tb={},lk={},tmon={},lmon={};
- function inM(tgl){return m===0||+String(tgl).slice(5,7)===m}
- DB.tx.tambahan.forEach(function(t){if(t.rmfg||!String(t.tgl).startsWith(String(y)))return;var k=lkhKey(t.jo);if(!k)return;
-  var o=tb[k]||(tb[k]={no:t.jo,produk:t.produk,druk:0,rp:0,ent:[],cs:{}}),dr=+t.druk||0,v=Math.round(TX.tambahan.val(t)||0),P=sebabParse(t.status,dr);
-  o.druk+=dr;o.rp+=v;o.ent.push({tgl:t.tgl,druk:dr,rp:v,status:String(t.status||'').trim()});
-  P.items.forEach(function(p){if(p.kosong)return;var kk=p.n.toLowerCase(),c=o.cs[kk]||(o.cs[kk]={n:p.n,d:0,rp:0});c.d+=p.d;c.rp+=dr>0?v*(p.d/dr):0});
-  if(inM(t.tgl))tmon[k]=1});
- LKH.rows.forEach(function(r){var k=lkhKey(r.no_jo)||('ID'+r.id_jo);var o=lk[k]||(lk[k]={no:r.no_jo||('ID '+r.id_jo),produk:r.produk,cust:r.customer,rows:[]});o.rows.push(r);if(inM(r.tgl))lmon[k]=1});
- var keys={};Object.keys(tb).forEach(function(k){keys[k]=1});Object.keys(lk).forEach(function(k){keys[k]=1});var out=[];
- Object.keys(keys).forEach(function(k){if(m>0&&!tmon[k]&&!lmon[k])return;
-  var t=tb[k]||null,l=lk[k]||null,kg=[],pcs=0,cs=t?Object.keys(t.cs).map(function(x){return t.cs[x]}).sort(function(a,b){return b.d-a.d}):[],st;
-  if(l){var g={};l.rows.forEach(function(r){var key=(r.kode_kendala||'')+'|'+(r.kendala||''),o=g[key]||(g[key]={n:r.kendala||'(tanpa kendala)',ev:0,qty:0,pcs:0,was:{},tah:{}}),p=lkhPcs(r);o.ev++;o.qty+=+r.qty||0;o.pcs+=p||0;pcs+=p||0;if(r.waste)o.was[r.waste]=1;o.tah[lkhTah(r)]=1});
-   kg=Object.keys(g).map(function(x){var o=g[x];o.waste=Object.keys(o.was).join(', ');o.tahapan=Object.keys(o.tah).join(', ');return o}).sort(function(a,b){return (b.pcs-a.pcs)||(b.qty-a.qty)||(b.ev-a.ev)})}
-  cs.forEach(function(c){c.hit=kg.some(function(o){var h=bdMatch(c.n,o.n+' '+o.waste);if(h)o.hit=true;return h})});
-  var nh=cs.filter(function(c){return c.hit}).length;
-  if(!t)st='tanpa';else if(!l)st='nolkh';else if(!cs.length)st='kosong';else st=nh===cs.length?'sesuai':(nh>0?'sebagian':'beda');
-  out.push({k:k,no:(l&&l.no)||(t&&t.no)||k,produk:(t&&t.produk)||(l&&l.produk)||'',cust:l?l.cust:'',t:t,l:l,kg:kg,cs:cs,pcs:pcs,st:st})});
- out.sort(function(a,b){var x=a.t?a.t.druk:-1,z=b.t?b.t.druk:-1;return (z-x)||(b.pcs-a.pcs)});return out}
-var BD_ST={sesuai:['pill-ok','Sesuai'],sebagian:['pill-warn','Sebagian sesuai'],beda:['pill-bad','Penyebab berbeda'],kosong:['pill-mut','Penyebab belum diisi'],nolkh:['pill-mut','Tanpa LKH'],tanpa:['pill-mut','Tanpa tambah bahan']};
-var BD_C={all:[]};
-function bdSet(k,v){UI.bd[k]=v;if(k!=='lim')UI.bd.lim=40;bdRefresh()}
-function bdReset(){UI.bd.f='all';UI.bd.q='';UI.bd.c='';UI.bd.k='';UI.bd.lim=40;byId('view').innerHTML=renderBanding()}
-function bdRefresh(){var a=byId('bdItems');if(!a)return;var list=bdFilter(BD_C.all);a.innerHTML=bdItemsHTML(list);var c=byId('bdCount');if(c)c.textContent=fmtID(list.length)+' JO';var t=byId('bdTabs');if(t)t.innerHTML=bdTabsHTML(BD_C.all)}
-function bdFilter(list){var b=UI.bd,q=String(b.q||'').toLowerCase().trim();
- return list.filter(function(o){if(b.f==='tb'){if(!o.t)return false}else if(b.f!=='all'&&o.st!==b.f)return false;
-  if(b.c&&!o.cs.some(function(x){return x.n.toLowerCase()===b.c}))return false;
-  if(b.k&&!o.kg.some(function(x){return x.n===b.k}))return false;
-  if(q&&(o.no+' '+o.produk+' '+(o.cust||'')).toLowerCase().indexOf(q)<0)return false;return true})}
-function bdTabsHTML(all){var b=UI.bd,cnt={all:all.length,tb:0,sesuai:0,sebagian:0,beda:0,kosong:0,nolkh:0,tanpa:0};all.forEach(function(o){cnt[o.st]++;if(o.t)cnt.tb++});
- var T=[['all','Semua'],['tb','Ada tambah bahan'],['sesuai','Sesuai'],['sebagian','Sebagian sesuai'],['beda','Penyebab berbeda'],['kosong','Belum diisi'],['nolkh','Tanpa LKH'],['tanpa','Tanpa tambah bahan']];
- return '<div class="tabs" style="flex-wrap:wrap">'+T.map(function(x){return '<button class="tab'+(b.f===x[0]?' active':'')+'" onclick="bdSet(\'f\',\''+x[0]+'\')">'+x[1]+' <span class="mono" style="opacity:.55">'+fmtID(cnt[x[0]])+'</span></button>'}).join('')+'</div>'}
-function bdFilterBar(all){var b=UI.bd,cm={},km={};
- all.forEach(function(o){o.cs.forEach(function(c){var k=c.n.toLowerCase(),x=cm[k]||(cm[k]={n:c.n,k:k,d:0});x.d+=c.d});o.kg.forEach(function(g){var x=km[g.n]||(km[g.n]={n:g.n,jo:0});x.jo++})});
- var co=Object.keys(cm).map(function(k){return cm[k]}).sort(function(a,z){return z.d-a.d}).slice(0,80),ko=Object.keys(km).map(function(k){return km[k]}).sort(function(a,z){return z.jo-a.jo}).slice(0,80);
- return '<div style="padding:12px 18px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line2)">'+
-  '<input class="input" placeholder="Cari JO / produk / customer" value="'+esc(b.q)+'" oninput="bdSet(\'q\',this.value)" style="width:220px">'+
-  '<select class="input" onchange="bdSet(\'c\',this.value)" style="width:auto;max-width:250px"><option value="">Semua penyebab awal</option>'+co.map(function(x){return '<option value="'+esc(x.k)+'"'+(b.c===x.k?' selected':'')+'>'+esc(x.n)+'</option>'}).join('')+'</select>'+
-  '<select class="input" onchange="bdSet(\'k\',this.value)" style="width:auto;max-width:250px"><option value="">Semua kendala LKH</option>'+ko.map(function(x){return '<option value="'+esc(x.n)+'"'+(b.k===x.n?' selected':'')+'>'+esc(x.n)+'</option>'}).join('')+'</select>'+
-  '<button class="btn btn-ghost" onclick="bdReset()">Reset filter</button></div><div id="bdTabs" style="padding:12px 18px;border-bottom:1px solid var(--line2)">'+bdTabsHTML(all)+'</div>'}
-function bdItemsHTML(list){var lim=UI.bd.lim;if(!list.length)return '<div class="empty">'+I('inbox')+'<p>Tidak ada JO untuk filter ini.</p></div>';
- return list.slice(0,lim).map(bdJoItem).join('')+(list.length>lim?'<div style="padding:12px 18px"><button class="btn btn-ghost" onclick="bdSet(\'lim\','+(lim+40)+')">Tampilkan '+Math.min(40,list.length-lim)+' lagi (sisa '+fmtID(list.length-lim)+')</button></div>':'')}
-function bdAwal(o){return o.cs.length?o.cs.map(function(c){return c.n+' '+fmtID(c.d)+' druk'}).join(', '):(o.t?'penyebab belum diisi':'')}
-function bdAkhir(o,n){return o.kg.slice(0,n||2).map(function(k){return k.n+' ('+fmtID(k.pcs)+' pcs)'}).join(', ')}
-function bdExport(){if(!LKH.rows){toast('Data LKH belum dimuat','err');return}var list=bdFilter(bdBuild(state.year,state.month)),
- rows=[['No JO','Produk','Customer','Status','Total (+) Druk','Nilai Tambah Bahan (Rp)','Tgl Tambah Bahan','Penyebab Awal (Tambah Bahan)','Kendala Akhir (LKH) teratas','Semua Kendala LKH','Total Pcs LKH']],
- dl=[['No JO','Produk','Tgl LKH','Kendala','Jenis Waste','Tahapan','Mesin','Qty','Isi','Cara hitung','Pcs','Cocok dengan penyebab awal']],
- dt=[['No JO','Produk','Tgl Tambah Bahan','(+) Druk','Nilai (Rp)','Penyebab diisi']];
- list.forEach(function(o){rows.push([o.no,o.produk,o.cust||'',BD_ST[o.st][1],o.t?o.t.druk:'',o.t?o.t.rp:'',o.t?o.t.ent.map(function(e){return e.tgl}).join('; '):'',bdAwal(o),o.kg[0]?o.kg[0].n:'',o.kg.map(function(k){return k.n+' ('+fmtID(k.pcs)+' pcs)'}).join('; '),o.l?o.pcs:'']);
-  if(o.t)o.t.ent.forEach(function(e){dt.push([o.no,o.produk,e.tgl,e.druk,e.rp,e.status])});
-  if(o.l)o.l.rows.slice().sort(function(a,b){return a.tgl<b.tgl?-1:a.tgl>b.tgl?1:0}).forEach(function(r){var p=lkhPcs(r),hit=o.cs.some(function(c){return bdMatch(c.n,(r.kendala||'')+' '+(r.waste||''))});
-   dl.push([o.no,o.produk,r.tgl,r.kendala||'',r.waste||'',lkhTah(r),lkhMesin(r),+r.qty||0,r.isi||'',lkhKali(r)===null?'tipe tidak diketahui':(lkhKali(r)?'qty x isi':'apa adanya (pcs)'),p==null?'':p,o.t&&o.cs.length?(hit?'Ya':'Tidak'):''])})});
- var wb=XLSX.utils.book_new();
- [[rows,'Banding per JO',[16,40,28,18,12,18,22,50,34,60,12]],[dl,'Detail LKH',[16,40,12,30,22,26,20,8,6,16,10,14]],[dt,'Detail Tambah Bahan',[16,40,14,10,16,60]]].forEach(function(x){var ws=XLSX.utils.aoa_to_sheet(x[0]);ws['!cols']=x[2].map(function(w){return {wch:w}});XLSX.utils.book_append_sheet(wb,ws,x[1])});
- XLSX.writeFile(wb,'Banding_TambahBahan_LKH_'+state.year+(state.month?'_'+('0'+state.month).slice(-2):'')+'.xlsx')}
-function bdToolbar(){return '<section class="grid"><div class="card"><div class="card-h"><h3>Penyebab Awal vs Kendala Akhir</h3><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn btn-ghost" onclick="lkhLoad(true)">'+I('refresh')+' Muat ulang</button>'+(isAdmin()?'<button class="btn btn-primary" onclick="byId(\'fileLkh\').click()">'+I('upload')+' Import LKH dari Excel</button><input type="file" id="fileLkh" accept=".xlsx,.xls" hidden onchange="lkhPick(this)">':'')+'</div></div>'+
-  '<div class="trn-note" style="border-bottom:none">Dicocokkan per nomor JO. <b>Awal</b> = penyebab yang diisi di Tambahan Bahan (kolom Status / Penyebab), <b>Akhir</b> = kendala yang tercatat di LKH. Kata penyebab dianggap <b>sesuai</b> bila ada kendala/jenis waste LKH pada JO yang sama dengan kata yang sama. JO tanpa tambah bahan tetap ditampilkan hanya dengan sisi LKH. Data LKH diperbarui lewat tombol <b>Import LKH dari Excel</b> (file jo.xlsx). Filter dan tombol <b>Export Excel</b> ada di kartu <b>Per JO</b> di bawah; export mengikuti filter dan berisi 3 sheet: Banding per JO, Detail LKH, dan Detail Tambah Bahan.</div></div></section>'}
-function bdAgg(list){var g={};list.forEach(function(o){if(!o.t||!o.l)return;o.cs.forEach(function(c){var key=c.n.toLowerCase(),a=g[key]||(g[key]={n:c.n,jo:0,druk:0,rp:0,hit:0,kend:{}});a.jo++;a.druk+=c.d;a.rp+=c.rp;if(c.hit)a.hit++;
-  o.kg.forEach(function(k){var x=a.kend[k.n]||(a.kend[k.n]={n:k.n,jo:0,pcs:0});x.jo++;x.pcs+=k.pcs})})});
- return Object.keys(g).map(function(k){var a=g[k];a.top=Object.keys(a.kend).map(function(x){return a.kend[x]}).sort(function(p,q){return (q.jo-p.jo)||(q.pcs-p.pcs)}).slice(0,3);return a}).sort(function(a,b){return b.druk-a.druk})}
-function bdJoItem(o,i){var st=BD_ST[o.st],aw=bdAwal(o),ak=bdAkhir(o,2),
- left=o.t?'<table class="trn-t" style="min-width:300px"><thead><tr><th>Tgl</th><th class="num">(+) Druk</th><th>Penyebab diisi</th></tr></thead><tbody>'+o.t.ent.map(function(e){return '<tr><td>'+fmtDateId(e.tgl)+'</td><td class="num">'+fmtID(e.druk)+'</td><td>'+(e.status?esc(e.status):'<span style="color:var(--faint)">belum diisi</span>')+'</td></tr>'}).join('')+'</tbody></table>'+
-   (o.cs.length?'<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">'+o.cs.map(function(c){return '<span class="pill '+(c.hit?'pill-ok':'pill-bad')+'">'+(c.hit?'\u2713 ':'')+esc(c.n)+' \u00B7 '+fmtID(c.d)+' druk</span>'}).join('')+'</div>':''):'<div style="color:var(--muted);padding:6px 0">JO ini tidak punya data tambah bahan.</div>',
- right=o.l?'<table class="trn-t" style="min-width:340px"><thead><tr><th>Kendala</th><th>Tahapan</th><th class="num">Kej.</th><th class="num">Qty</th><th class="num">Pcs</th></tr></thead><tbody>'+o.kg.slice(0,15).map(function(k,j){return '<tr'+(k.hit?' style="background:var(--good-soft)"':'')+'><td>'+(k.hit?'\u2713 ':'')+(j===0?'<b>'+esc(k.n)+'</b>':esc(k.n))+(k.waste?'<br><span style="color:var(--muted)">'+esc(k.waste)+'</span>':'')+'</td><td>'+esc(k.tahapan)+'</td><td class="num">'+fmtID(k.ev)+'</td><td class="num">'+fmtID(k.qty)+'</td><td class="num"><b>'+fmtID(k.pcs)+'</b></td></tr>'}).join('')+'</tbody></table>'+(o.kg.length>15?'<div style="font-size:11.5px;color:var(--faint);padding-top:6px">Menampilkan 15 dari '+o.kg.length+' kendala.</div>':''):'<div style="color:var(--muted);padding:6px 0">Belum ada kejadian LKH untuk JO ini.</div>';
- return '<details class="trn-i"><summary><span class="mono" style="width:22px;color:var(--faint)">'+(i+1)+'</span><div class="rprod" style="flex:1;min-width:220px"><div>'+esc(o.no)+' \u00B7 '+esc(o.produk||'-')+'</div><span class="rjo">'+(aw?'Awal: '+esc(aw):'')+(aw&&ak?' \u2192 ':'')+(ak?'Akhir: '+esc(ak):'')+'</span></div>'+
-  '<div class="trn-b"><span class="pill '+st[0]+'">'+st[1]+'</span></div><span class="rval">'+(o.t?fmtID(o.t.druk)+' druk':'\u2014')+'</span></summary>'+
-  '<div class="trn-d" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px"><div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Awal \u2014 Tambah bahan</div>'+left+'</div><div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Akhir \u2014 LKH</div>'+right+'</div></div></details>'}
-function bdStat(list){var S={tb:0,isi:0,lkh:0,cmp:0,ok:0,part:0,beda:0,kos:0,dAll:0,dHit:0};
- list.forEach(function(o){if(!o.t)return;S.tb++;if(o.cs.length)S.isi++;if(!o.l)return;S.lkh++;if(!o.cs.length){S.kos++;return}
-  S.cmp++;if(o.st==='sesuai')S.ok++;else if(o.st==='sebagian')S.part++;else S.beda++;o.cs.forEach(function(c){S.dAll+=c.d;if(c.hit)S.dHit+=c.d})});return S}
-function bdP(a,b){return b>0?fmtPct(a/b*100):'\u2014'}
-function bdAkurasiCard(all,y,m){var S=bdStat(all),
- box=function(l,v,n,big){return '<div style="border:1px solid var(--line2);border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">'+l+'</div><div class="mono" style="font-size:'+(big?'26':'20')+'px;margin-top:4px;color:'+(big?'var(--accent)':'var(--text)')+'">'+v+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">'+n+'</div></div>'};
- var top='<div style="padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">'+
-  box('Akurasi',bdP(S.ok+S.part,S.cmp),fmtID(S.ok+S.part)+' dari '+fmtID(S.cmp)+' JO: penyebab awal cocok dengan kendala LKH',1)+
-  box('JO tambah bahan yang ada di LKH',fmtID(S.lkh)+' / '+fmtID(S.tb),bdP(S.lkh,S.tb)+' JO tambah bahan punya kejadian LKH dengan nomor JO yang sama')+
-  box('JO tambah bahan yang penyebabnya terisi',fmtID(S.isi)+' / '+fmtID(S.tb),bdP(S.isi,S.tb)+' JO tambah bahan sudah diisi kolom Status / Penyebab')+'</div>';
- var rows='';if(m===0){for(var mm=1;mm<=12;mm++){var X=bdStat(bdBuild(y,mm));
-  rows+=X.tb+X.cmp===0?'<tr><td>'+MONTHS[mm-1]+'</td><td colspan="6" style="color:var(--faint)">\u2014</td></tr>':'<tr><td><b>'+MONTHS[mm-1]+'</b></td><td class="num mono">'+fmtID(X.tb)+'</td><td class="num mono">'+fmtID(X.lkh)+'</td><td class="num mono">'+fmtID(X.cmp)+'</td><td class="num mono">'+fmtID(X.ok+X.part)+'</td><td class="num mono">'+fmtID(X.beda)+'</td><td class="num mono"><b>'+bdP(X.ok+X.part,X.cmp)+'</b></td></tr>'}}
- var tbl=m===0?'<div class="trn-d" style="padding:6px 18px 16px"><table class="trn-t" style="min-width:640px"><thead><tr><th>Bulan</th><th class="num">JO tambah bahan</th><th class="num">Ada di LKH</th><th class="num">Bisa dibanding</th><th class="num">Cocok</th><th class="num">Tidak cocok</th><th class="num">Akurasi</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'';
- return '<section class="grid"><div class="card"><div class="card-h"><h3>Akurasi penyebab awal vs LKH \u2014 '+(m>0?MONTHS[m-1]+' '+y:'Tahun '+y)+'</h3></div>'+top+
-  '<div class="trn-note" style="border-top:1px solid var(--line2);border-bottom:'+(m===0?'1px solid var(--line2)':'none')+'"><b>Akurasi</b> = JO yang minimal satu penyebab awalnya cocok dengan kendala LKH, dibagi JO yang bisa dibandingkan. JO yang bisa dibandingkan adalah yang <b>punya tambah bahan, penyebabnya sudah diisi, dan ada kejadian LKH</b> ('+fmtID(S.cmp)+' JO). Kecocokan memakai kata yang sama, jadi angka bisa lebih rendah bila istilah di dua sisi berbeda.</div>'+tbl+'</div></section>'}
-function renderBanding(){var head=bdToolbar();
- if(!lkhOn())return head+'<div class="card access">'+I('lock')+'<h2>Perlu koneksi Supabase</h2><p>Data LKH disimpan di server, jadi halaman ini hanya tersedia saat terhubung.</p></div>';
- if(LKH.imp)return head+lkhImpPreview();
- if(LKH.rows===null||LKH.year!==state.year){lkhLoad();return head+'<div class="card"><div class="card-b" style="color:var(--muted)">Memuat data LKH...</div></div>'}
- if(LKH.err)return head+'<div class="card"><div class="card-b" style="color:#B42318">Gagal memuat data LKH: '+esc(LKH.err)+'</div></div>';
- var y=state.year,m=state.month,lbl=m>0?MONTHS[m-1]+' '+y:'Tahun '+y,all=bdBuild(y,m);
- if(!LKH.rows.length)head+='<div class="trn-note" style="background:#FFF7ED;color:#9A3412;border-radius:10px;margin-bottom:12px">Belum ada data LKH untuk tahun '+y+', jadi semua JO tambah bahan tampil sebagai "Tanpa LKH".</div>';
- var C={tb:0,lkh:0,sesuai:0,sebagian:0,beda:0,kosong:0,nolkh:0,tanpa:0};all.forEach(function(o){C[o.st]++;if(o.t)C.tb++;if(o.t&&o.l)C.lkh++});
- var cmp=C.sesuai+C.sebagian+C.beda,pc=function(n){return cmp>0?' ('+fmtPct(n/cmp*100)+')':''};
- var kpi='<section class="grid"><div class="card"><div class="card-h"><h3>Ringkasan \u2014 '+lbl+'</h3></div><div style="padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">'+lkhBox('JO ada tambah bahan',fmtID(C.tb))+lkhBox('Punya data LKH',fmtID(C.lkh))+lkhBox('Sesuai',fmtID(C.sesuai)+pc(C.sesuai))+lkhBox('Sebagian sesuai',fmtID(C.sebagian)+pc(C.sebagian))+lkhBox('Penyebab berbeda',fmtID(C.beda)+pc(C.beda))+lkhBox('Penyebab belum diisi',fmtID(C.kosong))+lkhBox('Tanpa LKH',fmtID(C.nolkh))+lkhBox('JO LKH tanpa tambah bahan',fmtID(C.tanpa))+'</div>'+
-  '<div class="trn-note" style="border-top:1px solid var(--line2);border-bottom:none">Persentase dihitung dari JO yang bisa dibandingkan (ada penyebab di tambah bahan <b>dan</b> ada kejadian LKH): <b>'+fmtID(cmp)+' JO</b>.</div></div></section>';
- var ag=bdAgg(all).slice(0,15),aggc='';
- if(ag.length)aggc='<section class="grid"><div class="card"><div class="card-h"><h3>Penyebab awal \u2192 kendala yang tercatat di LKH</h3></div><div class="trn-note">Untuk setiap penyebab yang diisi saat tambah bahan, berikut kendala LKH yang paling sering muncul pada JO yang sama. Contoh: penyebab awal <i>bintik</i> ternyata kendala LKH-nya <i>posisi kertas tidak pas</i>.</div><div class="trn-d" style="padding:6px 18px 16px"><table class="trn-t" style="min-width:780px"><thead><tr><th>Penyebab awal</th><th class="num">JO</th><th class="num">Druk</th><th class="num">Cocok LKH</th><th>Kendala LKH pada JO tersebut (teratas)</th></tr></thead><tbody>'+ag.map(function(a){return '<tr><td><b>'+esc(a.n)+'</b></td><td class="num mono">'+fmtID(a.jo)+'</td><td class="num mono">'+fmtID(a.druk)+'</td><td class="num mono">'+fmtID(a.hit)+' / '+fmtID(a.jo)+'</td><td>'+a.top.map(function(k){return esc(k.n)+' <span class="mono" style="color:var(--muted)">'+fmtID(k.jo)+' JO \u00B7 '+fmtID(k.pcs)+' pcs</span>'}).join('<br>')+'</td></tr>'}).join('')+'</tbody></table></div></div></section>';
- BD_C.all=all;var vc={},vk={};all.forEach(function(o){o.cs.forEach(function(c){vc[c.n.toLowerCase()]=1});o.kg.forEach(function(g){vk[g.n]=1})});if(UI.bd.c&&!vc[UI.bd.c])UI.bd.c='';if(UI.bd.k&&!vk[UI.bd.k])UI.bd.k='';
- var list=bdFilter(all);
- var jl='<section class="grid"><div class="card"><div class="card-h"><h3>Per JO \u2014 '+lbl+' <span id="bdCount" class="mono" style="color:var(--muted);font-size:12px">'+fmtID(list.length)+' JO</span></h3><button class="btn btn-ghost" onclick="bdExport()">'+I('download')+' Export Excel</button></div>'+bdFilterBar(all)+'<div class="trn-note">Klik satu JO untuk melihat sisi awal (tambah bahan) dan sisi akhir (LKH) berdampingan. JO dengan tambah bahan diurutkan dari druk terbesar, lalu JO yang hanya ada di LKH. Baris hijau di sisi LKH = kendala yang cocok dengan penyebab awal.</div><div class="rlist trn" id="bdItems">'+bdItemsHTML(list)+'</div></div></section>';
- return head+kpi+bdAkurasiCard(all,y,m)+aggc+jl}
-
 /* ---- LKH: Laporan Kerja Harian (kendala produksi) ---- */
 UI.lkh={by:'pcs'};
 var LKH={rows:null,year:null,busy:false,err:'',imp:null,saving:false};
@@ -1155,7 +1050,7 @@ function lkhAnalyze(wb,name){var ev=null,jo=null,jm=null,mt=null,ms=null,mc=null
   if(has('id_jo')&&has('total_qty'))ev=rows;
   else if(has('id_io_mounting')&&has('is_selected'))jm=rows;
   else if(has('type_kapasitas')&&has('nama_mesin'))ms=rows;
-  else if(has('nama_tahapan'))mc=rows;
+  else if(has('bagian_mesin')&&has('nama_mesin'))mc=rows;
   else if(has('id_io')&&has('nama_mounting')&&has('ukuran_cetak_isi_1'))mt=rows;
   else if(has('no_jo')&&has('id'))jo=rows});
  if(!ev||!jo)throw new Error('File harus berisi sheet kejadian (kolom id_jo dan total_qty) dan sheet JO (kolom id dan no_jo).');
@@ -1163,39 +1058,38 @@ function lkhAnalyze(wb,name){var ev=null,jo=null,jm=null,mt=null,ms=null,mc=null
  var mtm={};if(mt)mt.forEach(function(r){mtm[String(r.id)]=+r.ukuran_cetak_isi_1||0});
  var sel={},ganda=0;if(jm)jm.forEach(function(r){if(String(r.is_selected)!=='1'||String(r.is_active)==='0')return;var k=String(r.id_jo);if(sel[k]){ganda++;return}sel[k]=r});
  var tm={};if(ms)ms.forEach(function(r){tm[String(r.id)]={n:String(r.nama_mesin||''),k:String(r.type_kapasitas||'').toLowerCase()}});
- var mcm={};if(mc)mc.forEach(function(r){mcm[String(r.id)]=String(r.nama_tahapan||'')});
+ var mcm={};if(mc)mc.forEach(function(r){mcm[String(r.id)]=String(r.nama_mesin||'')});
  var out=[],tanpaJo=0,tglRusak=0,nonaktif=0,tanpaIsi=0,tanpaTipe=0,mn='',mx='',bln={},mes={};
  ev.forEach(function(r){if(String(r.is_active)==='0'){nonaktif++;return}
   var tgl=lkhDt(r.createdAt).slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(tgl)){tglRusak++;return}
   var j=jm_[String(r.id_jo)];if(!j)tanpaJo++;
   var sm=sel[String(r.id_jo)],isi=null;if(sm){isi=mtm[String(sm.id_io_mounting)];if(!(isi>0))isi=+sm.ukuran_cetak_isi_1||0;if(!(isi>0))isi=null}if(isi==null)tanpaIsi++;
-  var ti=tm[String(r.id_mesin)]||{n:'',k:''};if(ms&&!ti.k)tanpaTipe++;
+  var ti=tm[String(r.id_tahapan)]||{n:'',k:''};if(ms&&!ti.k)tanpaTipe++;
   out.push({id:+r.id,id_jo:+r.id_jo,no_jo:j?String(j.no_jo||''):'',customer:j?String(j.customer||''):'',produk:j?String(j.produk||''):'',tipe_jo:j?String(j.tipe_jo||''):'',tgl:tgl,
    kode_kendala:String(r.kode_kendala==null?'':r.kode_kendala),kendala:String(r.deskripsi_kendala||''),kode_waste:String(r.kode_waste==null?'':r.kode_waste),waste:String(r.deskripsi_waste||''),
    qty:+r.total_qty||0,id_tahapan:r.id_tahapan===''?null:+r.id_tahapan,id_mesin:r.id_mesin===''?null:+r.id_mesin,id_operator:r.id_operator===''?null:+r.id_operator,id_inspektor:r.id_inspektor===''?null:+r.id_inspektor,
-   jo_qty:j&&j.qty!==''?+j.qty:null,jo_druk:j&&j.qty_druk!==''?+j.qty_druk:null,isi:isi,mesin:ti.n,tahapan:mcm[String(r.id_tahapan)]||'',kap:ti.k});
-  if(!mn||tgl<mn)mn=tgl;if(!mx||tgl>mx)mx=tgl;var b=tgl.slice(0,7);bln[b]=(bln[b]||0)+1;var mk=String(r.id_mesin);mes[mk]=mes[mk]||{id:r.id_mesin,n:ti.n,k:ti.k,ev:0};mes[mk].ev++});
+   jo_qty:j&&j.qty!==''?+j.qty:null,jo_druk:j&&j.qty_druk!==''?+j.qty_druk:null,isi:isi,mesin:mcm[String(r.id_mesin)]||'',tahapan:ti.n,kap:ti.k});
+  if(!mn||tgl<mn)mn=tgl;if(!mx||tgl>mx)mx=tgl;var b=tgl.slice(0,7);bln[b]=(bln[b]||0)+1;var mk=String(r.id_tahapan);mes[mk]=mes[mk]||{id:r.id_tahapan,n:ti.n,k:ti.k,ev:0};mes[mk].ev++});
  var jos={};out.forEach(function(r){jos[r.id_jo]=1});
- return {name:name,rows:out,tanpaJo:tanpaJo,tglRusak:tglRusak,nonaktif:nonaktif,tanpaIsi:tanpaIsi,tanpaTipe:tanpaTipe,ganda:ganda,adaIsi:!!(jm&&(mt||jm)),adaMesin:!!ms,adaTah:!!mc,mn:mn,mx:mx,bln:bln,mes:Object.keys(mes).map(function(k){return mes[k]}),jo:Object.keys(jos).length,qty:out.reduce(function(a,r){return a+r.qty},0)}}
+ return {name:name,rows:out,tanpaJo:tanpaJo,tglRusak:tglRusak,nonaktif:nonaktif,tanpaIsi:tanpaIsi,tanpaTipe:tanpaTipe,ganda:ganda,adaIsi:!!(jm&&(mt||jm)),adaMesin:!!ms,mn:mn,mx:mx,bln:bln,mes:Object.keys(mes).map(function(k){return mes[k]}),jo:Object.keys(jos).length,qty:out.reduce(function(a,r){return a+r.qty},0)}}
 function lkhPick(inp){var f=inp.files&&inp.files[0];if(!f)return;var rd=new FileReader();
- rd.onload=function(e){try{LKH.imp=lkhAnalyze(XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false}),f.name);lkhRender()}catch(x){toast('Gagal membaca file: '+sbErr(x),'err')}};
+ rd.onload=function(e){try{LKH.imp=lkhAnalyze(XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false}),f.name);byId('view').innerHTML=renderLkh()}catch(x){toast('Gagal membaca file: '+sbErr(x),'err')}};
  rd.onerror=function(){toast('File tidak bisa dibaca.','err')};rd.readAsArrayBuffer(f);inp.value=''}
-function lkhRender(){byId('view').innerHTML=state.page==='banding'?renderBanding():renderLkh()}
-function lkhCancel(){LKH.imp=null;lkhRender()}
+function lkhCancel(){LKH.imp=null;byId('view').innerHTML=renderLkh()}
 async function lkhSave(){var im=LKH.imp;if(!im||LKH.saving)return;LKH.saving=true;var tot=im.rows.length,done=0;
  try{for(var a=0;a<tot;a+=500){await sbAdmin({action:'import',rows:im.rows.slice(a,a+500)},'lkh');done=Math.min(tot,a+500);toast('Menyimpan LKH... '+done+' / '+tot)}
-  toast('LKH tersimpan: '+tot+' kejadian.');LKH.imp=null;LKH.saving=false;LKH.rows=null;lkhRender()}
+  toast('LKH tersimpan: '+tot+' kejadian.');LKH.imp=null;LKH.saving=false;LKH.rows=null;byId('view').innerHTML=renderLkh()}
  catch(e){LKH.saving=false;toast('Gagal menyimpan ('+done+' dari '+tot+' sudah masuk): '+sbErr(e),'err')}}
 function lkhBox(l,v){return '<div style="border:1px solid var(--line2);border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">'+l+'</div><div class="mono" style="font-size:19px;margin-top:4px">'+v+'</div></div>'}
 function lkhTahTbl(list){list=list.slice().sort(function(a,b){return b.ev-a.ev});var top=list.slice(0,8),rest=list.slice(8);
- return '<table class="trn-t" style="min-width:560px"><thead><tr><th>Mesin</th><th>Tipe di master</th><th class="num">Kejadian</th><th>Perlakuan qty</th></tr></thead><tbody>'+top.map(function(m){var r={kap:m.k},k=lkhKali(r);
-  return '<tr><td>'+esc(m.n||('Mesin '+m.id))+' <span class="mono" style="color:var(--faint)">#'+m.id+'</span></td><td>'+esc(m.k||'-')+'</td><td class="num mono">'+fmtID(m.ev)+'</td><td>'+(k===null?'<span style="color:#B7791F">tipe tidak ada di master, pcs tidak dihitung</span>':(k?'<b>qty \u00D7 isi</b> = pcs':'sudah pcs, dipakai apa adanya'))+'</td></tr>'}).join('')+
-  (rest.length?'<tr><td colspan="4" style="color:var(--muted)">dan '+rest.length+' mesin lain ('+fmtID(rest.reduce(function(a,m){return a+m.ev},0))+' kejadian), aturan sama.</td></tr>':'')+'</tbody></table>'}
+ return '<table class="trn-t" style="min-width:560px"><thead><tr><th>Tahapan</th><th>Tipe di master</th><th class="num">Kejadian</th><th>Perlakuan qty</th></tr></thead><tbody>'+top.map(function(m){var r={kap:m.k},k=lkhKali(r);
+  return '<tr><td>'+esc(m.n||('Tahapan '+m.id))+' <span class="mono" style="color:var(--faint)">#'+m.id+'</span></td><td>'+esc(m.k||'-')+'</td><td class="num mono">'+fmtID(m.ev)+'</td><td>'+(k===null?'<span style="color:#B7791F">tipe tidak ada di master, pcs tidak dihitung</span>':(k?'<b>qty \u00D7 isi</b> = pcs':'sudah pcs, dipakai apa adanya'))+'</td></tr>'}).join('')+
+  (rest.length?'<tr><td colspan="4" style="color:var(--muted)">dan '+rest.length+' tahapan lain ('+fmtID(rest.reduce(function(a,m){return a+m.ev},0))+' kejadian), aturan sama.</td></tr>':'')+'</tbody></table>'}
 function lkhImpPreview(){var im=LKH.imp,bl=Object.keys(im.bln).sort().map(function(b){return '<tr><td>'+b+'</td><td class="num mono">'+fmtID(im.bln[b])+'</td></tr>'}).join(''),
  pcs=im.rows.reduce(function(a,r){var v=lkhPcs(r);return a+(v==null?0:v)},0);
  return '<section class="grid"><div class="card"><div class="card-h"><h3>Pratinjau import \u2014 '+esc(im.name)+'</h3></div><div class="trn-note">Kejadian digabung dengan JO lewat <b>id_jo = id JO</b> (no JO, customer, produk), lalu dengan <b>mounting terpilih</b> JO (<code>is_selected = 1</code>) untuk mendapat <b>isi</b> (kolom AI mounting), dan dengan master tahapan (<code>id_tahapan</code>) untuk nama dan tipe kapasitasnya: tipe <b>pcs</b> dipakai apa adanya, tipe <b>druk</b> dikali isi. Kejadian dengan id yang sudah ada akan <b>ditimpa</b> (tidak dobel).</div>'+
   '<div style="padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">'+lkhBox('Kejadian siap diimpor',fmtID(im.rows.length))+lkhBox('JO terkait',fmtID(im.jo))+lkhBox('Total qty',fmtID(im.qty))+lkhBox('Total pcs',fmtID(pcs))+lkhBox('Rentang tanggal',im.mn+' s/d '+im.mx)+'</div>'+
-  (im.tanpaJo||im.tglRusak||im.nonaktif||im.tanpaIsi||im.tanpaTipe||im.ganda||!im.adaIsi||!im.adaMesin||!im.adaTah?'<div class="trn-note" style="background:#FFF7ED;color:#9A3412">'+(!im.adaIsi?'Sheet mounting terpilih tidak ditemukan, jadi isi dan pcs tidak bisa dihitung. ':'')+(!im.adaTah?'Sheet master tahapan (kolom nama_tahapan) tidak ditemukan, nama tahapan tampil sebagai nomor. ':'')+(!im.adaMesin?'Sheet master mesin (kolom type_kapasitas) tidak ditemukan, jadi pcs tidak bisa dihitung. ':'')+(im.tanpaTipe?fmtID(im.tanpaTipe)+' kejadian punya id mesin yang tidak ada di master (pcs tidak dihitung). ':'')+(im.tanpaIsi&&im.adaIsi?fmtID(im.tanpaIsi)+' kejadian belum punya isi (pcs tidak dihitung untuk kejadian itu). ':'')+(im.ganda?fmtID(im.ganda)+' JO punya lebih dari satu mounting terpilih (dipakai yang pertama). ':'')+(im.tanpaJo?fmtID(im.tanpaJo)+' kejadian tidak ketemu JO-nya. ':'')+(im.tglRusak?fmtID(im.tglRusak)+' baris dilewati karena tanggal tidak valid. ':'')+(im.nonaktif?fmtID(im.nonaktif)+' baris nonaktif dilewati.':'')+'</div>':'')+
+  (im.tanpaJo||im.tglRusak||im.nonaktif||im.tanpaIsi||im.tanpaTipe||im.ganda||!im.adaIsi||!im.adaMesin?'<div class="trn-note" style="background:#FFF7ED;color:#9A3412">'+(!im.adaIsi?'Sheet mounting terpilih tidak ditemukan, jadi isi dan pcs tidak bisa dihitung. ':'')+(!im.adaMesin?'Sheet master tahapan (kolom type_kapasitas) tidak ditemukan, jadi pcs tidak bisa dihitung. ':'')+(im.tanpaTipe?fmtID(im.tanpaTipe)+' kejadian punya id tahapan yang tidak ada di master (pcs tidak dihitung). ':'')+(im.tanpaIsi&&im.adaIsi?fmtID(im.tanpaIsi)+' kejadian belum punya isi (pcs tidak dihitung untuk kejadian itu). ':'')+(im.ganda?fmtID(im.ganda)+' JO punya lebih dari satu mounting terpilih (dipakai yang pertama). ':'')+(im.tanpaJo?fmtID(im.tanpaJo)+' kejadian tidak ketemu JO-nya. ':'')+(im.tglRusak?fmtID(im.tglRusak)+' baris dilewati karena tanggal tidak valid. ':'')+(im.nonaktif?fmtID(im.nonaktif)+' baris nonaktif dilewati.':'')+'</div>':'')+
   '<div class="trn-d" style="padding:6px 18px 4px">'+lkhTahTbl(im.mes)+'</div>'+
   '<div class="trn-d" style="padding:6px 18px 4px"><table class="trn-t"><thead><tr><th>Bulan</th><th class="num">Kejadian</th></tr></thead><tbody>'+bl+'</tbody></table></div>'+
   '<div class="btn-row" style="padding:14px 18px"><button class="btn btn-primary" '+(LKH.saving?'disabled ':'')+'onclick="lkhSave()">'+I('upload')+' Simpan ke sistem</button><button class="btn btn-ghost" onclick="lkhCancel()">Batal</button></div></div></section>'}
@@ -1234,14 +1128,14 @@ function renderLkh(){var head=lkhToolbar();
  var rows=m>0?all.filter(function(r){return +String(r.tgl).slice(5,7)===m}):all,lbl=m>0?MONTHS[m-1]+' '+y:'Tahun '+y;
  if(!rows.length)return head+'<div class="card"><div class="card-b" style="color:var(--muted)">Tidak ada kejadian LKH pada '+lbl+'.</div></div>';
  var T={ev:rows.length,qty:0,pcs:0},jos={},tanpa=0;rows.forEach(function(r){T.qty+=+r.qty||0;var p=lkhPcs(r);if(p==null)tanpa++;else T.pcs+=p;jos[r.id_jo]=1});
- var mlist={};rows.forEach(function(r){var k=String(r.id_mesin),o=mlist[k]||(mlist[k]={id:r.id_mesin,n:lkhMesin(r),k:r.kap,ev:0});o.ev++});
+ var mlist={};rows.forEach(function(r){var k=String(r.id_tahapan),o=mlist[k]||(mlist[k]={id:r.id_tahapan,n:r.tahapan,k:r.kap,ev:0});o.ev++});
  var kpi='<section class="grid"><div class="card"><div class="card-h"><h3>Ringkasan \u2014 '+lbl+'</h3></div><div style="padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">'+lkhBox('Kejadian kendala',fmtID(T.ev))+lkhBox('Total qty (apa adanya)',fmtID(T.qty))+lkhBox('Total pcs',fmtID(T.pcs))+lkhBox('JO terdampak',fmtID(Object.keys(jos).length))+'</div>'+
-  '<div class="trn-note" style="border-top:1px solid var(--line2);border-bottom:none"><b>Pcs</b>: mesin bertipe <b>druk</b> dihitung qty \u00D7 isi (isi dari mounting terpilih JO), mesin bertipe <b>pcs</b> dipakai apa adanya.'+(tanpa?' <span style="color:#B7791F">'+fmtID(tanpa)+' kejadian belum bisa dihitung pcs-nya karena isi atau tipe mesinnya belum ada (ditandai *).</span>':'')+'</div>'+
-  '<div class="trn-d" style="padding:4px 18px 14px">'+'<details><summary style="cursor:pointer;color:var(--muted);font-size:12.5px;margin-top:6px">Lihat aturan per mesin</summary>'+lkhTahTbl(Object.keys(mlist).map(function(k){return mlist[k]}))+'</details>'+'</div></div></section>';
+  '<div class="trn-note" style="border-top:1px solid var(--line2);border-bottom:none"><b>Pcs</b>: tahapan bertipe <b>druk</b> dihitung qty \u00D7 isi (isi dari mounting terpilih JO), tahapan bertipe <b>pcs</b> dipakai apa adanya.'+(tanpa?' <span style="color:#B7791F">'+fmtID(tanpa)+' kejadian belum bisa dihitung pcs-nya karena isi atau tipe tahapannya belum ada (ditandai *).</span>':'')+'</div>'+
+  '<div class="trn-d" style="padding:4px 18px 14px">'+'<details><summary style="cursor:pointer;color:var(--muted);font-size:12.5px;margin-top:6px">Lihat aturan per tahapan</summary>'+lkhTahTbl(Object.keys(mlist).map(function(k){return mlist[k]}))+'</details>'+'</div></div></section>';
  var kend=lkhGroup(rows,function(r){return r.kode_kendala+'|'+r.kendala},function(r){return r.kendala||'(tanpa kendala)'},function(r){return r.kode_kendala}),
   was=lkhGroup(rows,function(r){return r.kode_waste+'|'+r.waste},function(r){return r.waste||'(tanpa jenis waste)'},function(r){return r.kode_waste}),
   mes=lkhGroup(rows,function(r){return 'm'+r.id_mesin},lkhMesin),
-  tah=lkhGroup(rows,function(r){return 't'+r.id_tahapan},lkhTah);
+  tah=lkhGroup(rows,function(r){return 't'+r.id_tahapan},lkhTah,function(r){return r.kap});
  var bl=[];for(var mm=1;mm<=12;mm++){var rm=all.filter(function(r){return +String(r.tgl).slice(5,7)===mm});
   if(!rm.length){bl.push('<tr><td>'+MONTHS[mm-1]+'</td><td colspan="5" style="color:var(--faint)">\u2014</td></tr>');continue}
   var tj={},qm=0,pm=0;rm.forEach(function(r){tj[r.id_jo]=1;qm+=+r.qty||0;pm+=lkhPcs(r)||0});var kk=lkhSort(lkhGroup(rm,function(r){return r.kode_kendala+'|'+r.kendala},function(r){return r.kendala||'(tanpa kendala)'}),by);
@@ -1249,7 +1143,70 @@ function renderLkh(){var head=lkhToolbar();
  var bulan='<section class="grid"><div class="card"><div class="card-h"><h3>Per bulan \u2014 '+y+'</h3></div><div class="trn-d" style="padding:6px 18px 16px"><table class="trn-t" style="min-width:700px"><thead><tr><th>Bulan</th><th class="num">Kejadian</th><th class="num">Qty</th><th class="num">Pcs</th><th class="num">JO</th><th>Kendala terbesar</th></tr></thead><tbody>'+bl.join('')+'</tbody></table></div></div></section>';
  var urut=by==='pcs'?'pcs':(by==='qty'?'qty':'jumlah kejadian');
  return head+kpi+lkhCard('Kendala terbanyak \u2014 '+lbl,'Diurutkan dari yang terbesar ke terkecil berdasarkan '+urut+'. Pilih bulan di atas untuk satu bulan saja.',kend,T,by,15)+
-  lkhCard('Jenis waste terbanyak \u2014 '+lbl,'',was,T,by,10)+lkhCard('Per mesin \u2014 '+lbl,'Konversi pcs mengikuti <b>tipe kapasitas mesin</b> (druk = qty \u00D7 isi, pcs = apa adanya). Nama mesin dari master mesin, nama tahapan dari master tahapan.',mes,T,by,10)+lkhCard('Per tahapan \u2014 '+lbl,'',tah,T,by,12)+bulan+lkhJoCard(rows,by)}
+  lkhCard('Jenis waste terbanyak \u2014 '+lbl,'',was,T,by,10)+lkhCard('Per mesin \u2014 '+lbl,'Konversi pcs mengikuti <b>tipe tahapan</b> tiap kejadian, bukan mesinnya, jadi satu mesin bisa memuat kejadian yang dikali isi maupun yang apa adanya.',mes,T,by,10)+lkhCard('Per tahapan \u2014 '+lbl,'',tah,T,by,12)+bulan+lkhJoCard(rows,by)}
+/* ---- Banding: alasan Tambah Bahan (awal) vs kendala LKH di mesin cetak (realisasi) ---- */
+UI.bdg={f:'semua',m:'cetak'};
+// Tahapan yang dianggap MESIN CETAK: mesin ber-bagian "printing" di master mesin, ditambah tahapan cetak outsource. Ubah daftar ini bila perlu.
+var BDG_CETAK=['R700','SM','GTO','ITTOH','POLLAR','R700 / SM','OUTSOURCE - CETAK'];
+var BDG_STOP={tidak:1,proses:1,kendala:1,pending:1,manual:1,yang:1,dengan:1,pada:1,dari:1};
+function bdgNorm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim()}
+function bdgWords(s){return bdgNorm(s).split(' ').filter(function(w){return w.length>=4&&!BDG_STOP[w]})}
+function bdgMatch(cause,texts){var c=bdgNorm(cause);if(!c)return false;var cw=bdgWords(cause);
+ for(var i=0;i<texts.length;i++){var t=bdgNorm(texts[i]);if(!t)continue;
+  if(c.length>=3&&t.indexOf(c)>=0)return true;if(t.length>=3&&c.indexOf(t)>=0)return true;
+  var tw=bdgWords(texts[i]);if(cw.some(function(w){return tw.indexOf(w)>=0}))return true}
+ return false}
+function bdgCetak(r){return BDG_CETAK.indexOf(String(r.tahapan||'').toUpperCase().replace(/\s+/g,' ').trim())>=0}
+function bdgMesinList(){var g={};(LKH.rows||[]).forEach(function(r){if(!bdgCetak(r))return;var o=g[r.id_tahapan]||(g[r.id_tahapan]={id:r.id_tahapan,n:r.tahapan,ev:0});o.ev++});
+ return Object.keys(g).map(function(k){return g[k]}).sort(function(a,b){return b.ev-a.ev})}
+function bdgBuild(mf){mf=mf||UI.bdg.m;var y=String(state.year),m=state.month,lk={};
+ (LKH.rows||[]).forEach(function(r){if(!bdgCetak(r))return;if(mf!=='cetak'&&String(r.id_tahapan)!==mf)return;var k=lkhKey(r.no_jo);if(!k)return;(lk[k]||(lk[k]=[])).push(r)});
+ var jos={};((DB.tx&&DB.tx.tambahan)||[]).forEach(function(t){if(t.rmfg)return;if(!String(t.tgl).startsWith(y))return;if(m>0&&+String(t.tgl).slice(5,7)!==m)return;var k=lkhKey(t.jo);if(!k)return;
+  var o=jos[k]||(jos[k]={k:k,jo:t.jo,produk:t.produk,druk:0,rp:0,ent:0,c:{}});o.druk+=+t.druk||0;o.rp+=Math.round(TX.tambahan.val(t)||0);o.ent++;
+  sebabParse(t.status,t.druk).items.forEach(function(p){if(p.kosong)return;var ck=p.n.toLowerCase(),c=o.c[ck]||(o.c[ck]={n:p.n,druk:0});c.druk+=p.d})});
+ return Object.keys(jos).map(function(k){var o=jos[k],ev=lk[k]||[];o.lkh=ev;o.causes=Object.keys(o.c).map(function(x){return o.c[x]});
+  var texts=[];ev.forEach(function(r){if(r.kendala)texts.push(r.kendala)});
+  o.causes.forEach(function(c){c.cocok=bdgMatch(c.n,texts)});var nm=o.causes.filter(function(c){return c.cocok}).length;
+  o.st=!ev.length?'tanpa':(!o.causes.length?'kosong':(nm===o.causes.length?'sesuai':(nm>0?'sebagian':'beda')));return o})}
+var BDG_ST={sesuai:['pill-ok','Sesuai'],sebagian:['pill-warn','Sebagian sesuai'],beda:['pill-bad','Tidak sesuai'],kosong:['pill-mut','Alasan belum diisi'],tanpa:['pill-mut','Tidak ada di LKH mesin cetak']};
+function bdgF(v){UI.bdg.f=v;byId('view').innerHTML=renderBanding()}
+function bdgM(v){UI.bdg.m=v;byId('view').innerHTML=renderBanding()}
+function bdgRow(o,i){var g=lkhGroup(o.lkh,function(r){return r.kode_kendala+'|'+r.kendala+'|'+r.id_tahapan},function(r){return r.kendala||'(tanpa kendala)'},lkhTah);lkhSort(g,'pcs');
+ var chips=o.causes.map(function(c){return '<span class="pill '+(o.lkh.length?(c.cocok?'pill-ok':'pill-bad'):'pill-mut')+'">'+esc(c.n)+' '+fmtID(c.druk)+' druk'+(o.lkh.length?(c.cocok?' \u2713':' \u2717'):'')+'</span>'}).join(' ');
+ var st=BDG_ST[o.st],rows=g.slice(0,12).map(function(x){return '<tr><td>'+esc(x.n)+'</td><td>'+esc(x.sub||'-')+'</td><td class="num">'+fmtID(x.ev)+'</td><td class="num"><b>'+fmtID(x.pcs)+'</b></td></tr>'}).join('');
+ return '<details class="trn-i"><summary><span class="mono" style="width:22px;color:var(--faint)">'+(i+1)+'</span><div class="rprod" style="flex:1;min-width:210px"><div>'+esc(o.jo)+' \u00B7 '+esc(o.produk||'-')+'</div><span class="rjo">Tambah bahan: '+fmtID(o.druk)+' druk \u00B7 '+fmtRp(o.rp)+'</span></div>'+
+  '<div class="trn-b">'+(chips||'')+'</div><span class="pill '+st[0]+'">'+st[1]+'</span></summary>'+
+  '<div class="trn-d"><div style="font-size:12.5px;margin-bottom:6px"><b>Alasan awal (Tambah Bahan):</b> '+(o.causes.length?chips:'<span style="color:var(--faint)">alasan belum diisi</span>')+'</div>'+
+  (o.lkh.length?'<div style="font-size:12.5px;margin-bottom:4px"><b>Kendala dilaporkan di LKH mesin cetak:</b> '+fmtID(o.lkh.length)+' kejadian</div><table class="trn-t" style="min-width:520px"><thead><tr><th>Kendala</th><th>Mesin</th><th class="num">Kejadian</th><th class="num">Pcs</th></tr></thead><tbody>'+rows+'</tbody></table>':'<div style="font-size:12.5px;color:var(--faint)">Belum ada kejadian LKH di mesin cetak untuk JO ini.</div>')+'</div></details>'}
+function renderBanding(){var y=state.year,m=state.month,lbl=m>0?MONTHS[m-1]+' '+y:'Tahun '+y;
+ if(!lkhOn())return '<div class="card access">'+I('lock')+'<h2>Perlu koneksi Supabase</h2><p>Data LKH disimpan di server, jadi halaman ini hanya tersedia saat terhubung.</p></div>';
+ if(LKH.rows===null||LKH.year!==y){lkhLoad();return '<div class="card"><div class="card-b" style="color:var(--muted)">Memuat data LKH...</div></div>'}
+ if(LKH.err)return '<div class="card"><div class="card-b" style="color:#B42318">Gagal memuat data LKH: '+esc(LKH.err)+'</div></div>';
+ var ml=bdgMesinList(),mf=UI.bdg.m;if(mf!=='cetak'&&!ml.some(function(x){return String(x.id)===mf}))mf=UI.bdg.m='cetak';
+ var all=bdgBuild(mf),n=all.length;
+ if(!n)return '<div class="card"><div class="card-b" style="color:var(--muted)">Belum ada data Tambah Bahan pada '+lbl+'.</div></div>';
+ var c={sesuai:0,sebagian:0,beda:0,kosong:0,tanpa:0};all.forEach(function(o){c[o.st]++});var adaLkh=n-c.tanpa,f=UI.bdg.f,nama=mf==='cetak'?'semua mesin cetak':((ml.filter(function(x){return String(x.id)===mf})[0]||{}).n||'');
+ var mtabs='<button class="tab'+(mf==='cetak'?' active':'')+'" onclick="bdgM(\'cetak\')">Semua mesin cetak ('+fmtID(ml.reduce(function(a,x){return a+x.ev},0))+')</button>'+ml.map(function(x){return '<button class="tab'+(mf===String(x.id)?' active':'')+'" onclick="bdgM(\''+x.id+'\')">'+esc(x.n)+' ('+fmtID(x.ev)+')</button>'}).join('');
+ var tabs=[['semua','Semua ('+n+')'],['beda','Tidak sesuai ('+c.beda+')'],['sebagian','Sebagian ('+c.sebagian+')'],['sesuai','Sesuai ('+c.sesuai+')'],['kosong','Belum diisi ('+c.kosong+')'],['tanpa','Tanpa LKH ('+c.tanpa+')']].map(function(t){return '<button class="tab'+(f===t[0]?' active':'')+'" onclick="bdgF(\''+t[0]+'\')">'+t[1]+'</button>'}).join('');
+ var kpi='<section class="grid"><div class="card"><div class="card-h"><h3>Banding Tambah Bahan vs LKH mesin cetak \u2014 '+lbl+'</h3></div>'+
+  '<div class="trn-note" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">Mesin: <div class="tabs" style="flex-wrap:wrap">'+mtabs+'</div></div>'+
+  '<div style="padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">'+lkhBox('JO tambah bahan',fmtID(n))+lkhBox('Ada kendala di '+esc(nama),fmtID(adaLkh)+' ('+fmtPct(adaLkh/n*100)+')')+lkhBox('Alasan sesuai kendala',fmtID(c.sesuai))+lkhBox('Tidak / sebagian sesuai',fmtID(c.beda+c.sebagian))+lkhBox('Alasan belum diisi',fmtID(c.kosong))+'</div>'+
+  '<div class="trn-note" style="border-top:1px solid var(--line2);border-bottom:none"><b>Awal</b> = alasan yang diisi di Tambah Bahan (kolom Status / Penyebab). <b>Realisasi</b> = <b>kendala</b> yang dilaporkan operator di LKH, hanya dari tahapan mesin cetak ('+BDG_CETAK.map(esc).join(', ')+'). Jenis waste tidak ikut dibandingkan. JO dicocokkan lewat nomor JO (awalan "JO-" dan akhiran "-P" dibuang). Sebuah alasan dianggap <b>sesuai</b> bila katanya sama dengan salah satu kendala, misalnya "debu kertas". Ini pencocokan kata, bukan penilaian pasti, jadi buka tiap JO untuk menilai sendiri.</div></div></section>';
+ // ringkasan per mesin
+ var pm=ml.map(function(x){var A=bdgBuild(String(x.id)),cc={sesuai:0,sebagian:0,beda:0,kosong:0,tanpa:0},kd={},tot=0;A.forEach(function(o){cc[o.st]++;o.lkh.forEach(function(r){var k=r.kendala||'(tanpa kendala)',p=lkhPcs(r)||0,d=kd[k]||(kd[k]={n:k,pcs:0,ev:0});d.pcs+=p;d.ev++;tot+=p})});
+  var top=Object.keys(kd).map(function(k){return kd[k]}).sort(function(a,b){return b.pcs-a.pcs})[0];
+  var ada=A.length-cc.tanpa;return '<tr'+(String(x.id)===mf?' style="background:var(--surface2)"':'')+'><td><b>'+esc(x.n)+'</b></td><td class="num mono">'+fmtID(ada)+'</td><td class="num mono">'+fmtID(cc.sesuai)+'</td><td class="num mono">'+fmtID(cc.sebagian)+'</td><td class="num mono">'+fmtID(cc.beda)+'</td><td class="num mono">'+fmtID(cc.kosong)+'</td><td>'+(top?esc(top.n)+'<br><span class="mono" style="color:var(--muted)">'+fmtID(top.pcs)+' pcs \u00B7 '+fmtID(top.ev)+' kejadian</span>':'<span style="color:var(--faint)">\u2014</span>')+'</td></tr>'}).join('');
+ var perMesin='<section class="grid"><div class="card"><div class="card-h"><h3>Per mesin cetak</h3></div><div class="trn-note">JO tambah bahan yang punya kendala di mesin tersebut, dan hasil pencocokan alasannya. Klik nama mesin di atas untuk melihat daftar JO-nya.</div><div class="trn-d" style="padding:6px 18px 16px"><table class="trn-t" style="min-width:700px"><thead><tr><th>Mesin</th><th class="num">JO di LKH</th><th class="num">Sesuai</th><th class="num">Sebagian</th><th class="num">Tidak sesuai</th><th class="num">Alasan kosong</th><th>Kendala terbesar</th></tr></thead><tbody>'+pm+'</tbody></table></div></div></section>';
+ // matriks: alasan awal -> kendala realisasi
+ var M={};all.forEach(function(o){if(!o.lkh.length)return;o.causes.forEach(function(cz){var k=cz.n.toLowerCase(),a=M[k]||(M[k]={n:cz.n,jo:0,cocok:0,druk:0,kd:{},tot:0});a.jo++;if(cz.cocok)a.cocok++;a.druk+=cz.druk;
+  o.lkh.forEach(function(r){var key=r.kendala||'(tanpa kendala)',p=lkhPcs(r)||0,d=a.kd[key]||(a.kd[key]={n:key,pcs:0,ev:0});d.pcs+=p;d.ev++;a.tot+=p})})});
+ var ma=Object.keys(M).map(function(k){return M[k]}).sort(function(a,b){return b.druk-a.druk}).slice(0,10);
+ var mat=ma.length?'<section class="grid"><div class="card"><div class="card-h"><h3>Alasan awal \u2192 kendala yang dilaporkan di '+esc(nama)+'</h3></div><div class="trn-note">Untuk JO yang ada di kedua data. Satu JO dengan beberapa alasan dihitung di tiap alasannya. Kendala diurutkan dari pcs terbesar.</div><div class="rlist">'+ma.map(function(a,i){var kd=Object.keys(a.kd).map(function(k){return a.kd[k]}).sort(function(x,y){return y.pcs-x.pcs}).slice(0,3);
+  return '<div class="pnb-r" style="align-items:flex-start"><span class="mono" style="width:22px;color:var(--faint)">'+(i+1)+'</span><div style="flex:1;min-width:200px"><div><b>'+esc(a.n)+'</b> <span class="mono" style="color:var(--muted);font-size:11.5px">'+fmtID(a.druk)+' druk \u00B7 '+fmtID(a.jo)+' JO</span></div><div style="font-size:12.5px;color:var(--muted);margin-top:3px">Sama dengan kendala di LKH: <b>'+fmtID(a.cocok)+' dari '+fmtID(a.jo)+' JO</b> ('+fmtPct(a.jo?a.cocok/a.jo*100:0)+')</div></div>'+
+   '<div style="flex:1.4;min-width:240px;font-size:12.5px">'+kd.map(function(d){return '<div style="display:flex;justify-content:space-between;gap:10px"><span>'+esc(d.n)+'</span><span class="mono" style="color:var(--muted)">'+fmtID(d.pcs)+' pcs \u00B7 '+fmtPct(a.tot?d.pcs/a.tot*100:0)+'</span></div>'}).join('')+'</div></div>'}).join('')+'</div></div></section>':'';
+ var list=all.filter(function(o){return f==='semua'||o.st===f}).sort(function(a,b){return b.druk-a.druk}),
+  lst='<section class="grid"><div class="card"><div class="card-h"><h3>Per JO</h3><div class="tabs" style="flex-wrap:wrap">'+tabs+'</div></div><div class="trn-note">Diurutkan dari druk tambah bahan terbesar. Klik satu JO untuk melihat kendalanya di LKH.'+(c.kosong+c.tanpa===n&&c.kosong===n-c.tanpa?' <span style="color:#B7791F">Alasan di Tambah Bahan belum terisi, jadi yang bisa dibandingkan baru ketika kolom Status / Penyebab mulai diisi.</span>':'')+'</div><div class="rlist trn">'+(list.length?list.slice(0,40).map(bdgRow).join(''):'<div class="empty">'+I('inbox')+'<p>Tidak ada JO pada kelompok ini.</p></div>')+'</div>'+(list.length>40?'<div class="trn-note" style="border-top:1px solid var(--line2);border-bottom:none">Menampilkan 40 teratas dari '+fmtID(list.length)+' JO.</div>':'')+'</div></section>';
+ return kpi+perMesin+mat+lst}
 function topCard(k,lbl){var y=state.year,m=state.month,g={};
  DB.tx[k].forEach(function(t){if(!t.tgl.startsWith(String(y))||(m>0&&+t.tgl.slice(5,7)!==m))return;var key=String(t.produk||'-').trim().toUpperCase(),v=TX[k].val(t)||0;
   var o=g[key]||(g[key]={n:String(t.produk||'-').trim(),v:0,c:0});o.v+=v;o.c++});
