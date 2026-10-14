@@ -946,7 +946,7 @@ async function aiRun(mode){var q=mode==='tanya'?(byId('aiQ').value||'').trim():'
  var out=byId('aiOut');out.innerHTML='<span class="mono">Menganalisa…</span>';
  try{var r=await sbAdmin({mode:mode,question:q,data:aiData(q)},'analisa-ai');aiShow(r.text)}catch(e){out.innerHTML='';toast('Gagal: '+sbErr(e),'err')}}
 /* ---- Tren Kejadian: Top 10 per tahun, naik/turun/sama berdasarkan urutan kejadian (bukan per bulan) ---- */
-UI.tren={k:'tambahan'};UI.trenq={k:'tambahan'};
+UI.tren={k:'tambahan',d:'',f:''};UI.trenq={k:'tambahan',d:'',f:''};
 var TREN_COL={tambahan:'#E8590C',kurang:'#B8740A',cupk:'#C2255C',retur:'#0E9384'};
 var TREN_UNIT={tambahan:'Druk',kurang:'Qty',cupk:'Qty',retur:'Qty'};
 var TREN_QTY={tambahan:function(t){return +t.druk||0},kurang:function(t){return +t.qty||0},cupk:function(t){return +t.qty||0},retur:function(t){return +t.qty||0}};
@@ -954,13 +954,13 @@ function trenAvg(a){return a.length?a.reduce(function(x,y){return x+y},0)/a.leng
 function trenDir(v){var n=v.length;if(n<4)return null;var h=Math.floor(n/2),o=trenAvg(v.slice(0,h)),w=trenAvg(v.slice(n-h)),ch=o>0?(w-o)/o:(w>0?1:0);return {ch:ch,cls:Math.abs(ch)<0.05?'same':(ch>0?'up':'down')}}
 function trenFreq(d){if(d.length<4)return null;var g=[];for(var i=1;i<d.length;i++)g.push((Date.parse(d[i])-Date.parse(d[i-1]))/864e5);
  var h=Math.floor(g.length/2),o=trenAvg(g.slice(0,h)),w=trenAvg(g.slice(g.length-h));if(!(o>0))return w>0?'jarang':'tetap';var r=w/o;return r<0.85?'sering':r>1.15?'jarang':'tetap'}
-function trenData(k,withRp){var y=String(state.year),g={};
+function trenData(k,withRp,all){var y=String(state.year),g={};
  DB.tx[k].forEach(function(t){if(!String(t.tgl).startsWith(y))return;var key=String(t.produk||'-').trim().toUpperCase(),o=g[key]||(g[key]={n:String(t.produk||'-').trim(),ev:[],rp:0,qty:0});
   var e={tgl:t.tgl,jo:t.jo||'',rp:Math.round(TX[k].val(t)||0),qty:TREN_QTY[k](t)};o.ev.push(e);o.rp+=e.rp;o.qty+=e.qty});
  var arr=Object.keys(g).map(function(x){return g[x]});
  arr.forEach(function(o){o.ev.sort(function(a,b){return a.tgl<b.tgl?-1:a.tgl>b.tgl?1:0})});
  arr.sort(withRp?function(a,b){return b.rp-a.rp}:function(a,b){return b.ev.length-a.ev.length||b.qty-a.qty});
- return arr.slice(0,10)}
+ return all?arr:arr.slice(0,10)}
 function trenSpark(v,col){v=v.slice(-24);var mx=Math.max.apply(null,v)||1,w=6,gp=2,h=22;
  return '<svg width="'+(v.length*(w+gp))+'" height="'+h+'" style="flex:none">'+v.map(function(x,i){var bh=Math.max(2,x/mx*h);return '<rect x="'+(i*(w+gp))+'" y="'+(h-bh)+'" width="'+w+'" height="'+bh+'" rx="1" fill="'+col+'" opacity=".8"/>'}).join('')+'</svg>'}
 function trenBadge(d,n){if(!d)return '<span class="pill pill-mut">Data belum cukup ('+n+' entri)</span>';
@@ -974,12 +974,24 @@ function trenRow(o,i,k,withRp){var col=TREN_COL[k],vals=o.ev.map(function(e){ret
  return '<details class="trn-i"><summary><span class="mono" style="width:22px;color:var(--faint)">'+(i+1)+'</span><div class="rprod" style="flex:1;min-width:150px"><div>'+esc(o.n)+'</div><span class="rjo">'+fmtID(n)+' entri</span></div>'+
   trenSpark(vals,col)+'<div class="trn-b">'+trenBadge(trenDir(vals),n)+trenFreqBadge(trenFreq(o.ev.map(function(e){return e.tgl})))+'</div><span class="rval">'+total+'</span></summary>'+
   '<div class="trn-d"><table class="trn-t"><thead><tr><th>Tgl</th><th>No JO</th><th class="num">'+(withRp?'Nilai':TREN_UNIT[k])+'</th><th>vs sebelumnya</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>'}
-function renderTren(p){var withRp=(p==='tren'),k=UI[p].k,y=state.year,arr=trenData(k,withRp);
+function renderTren(p){var withRp=(p==='tren'),S=UI[p],k=S.k,y=state.year,all=trenData(k,withRp,true);
+ all.forEach(function(o){var v=o.ev.map(function(e){return withRp?e.rp:e.qty}),d=trenDir(v),f=trenFreq(o.ev.map(function(e){return e.tgl}));o.dc=d?d.cls:'';o.fq=f||''});
+ var dd=S.d||'',ff=S.f||'',filtered=!!(dd||ff);
+ var cnt=function(g,x){return all.filter(function(o){return g==='d'?((!ff||o.fq===ff)&&(!x||o.dc===x)):((!dd||o.dc===dd)&&(!x||o.fq===x))}).length};
+ var chip=function(g,x,l){var on=(S[g]||'')===x;return '<button class="tab'+(on?' active':'')+'" onclick="trenFilter(\''+p+'\',\''+g+'\',\''+x+'\')">'+l+' <span class="mono" style="opacity:.55">'+fmtID(cnt(g,x))+'</span></button>'};
+ var grp=function(t,h){return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">'+t+'</span><div class="tabs" style="flex-wrap:wrap">'+h+'</div></div>'};
  var tabs=TXK.map(function(x){return '<button class="tab'+(k===x?' active':'')+'" onclick="trenTab(\''+p+'\',\''+x+'\')">'+TX[x].sheet+'</button>'}).join('');
+ var fb='<div style="padding:12px 18px;display:flex;gap:10px 22px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line2)">'+grp('Tren',chip('d','','Semua')+chip('d','up','Naik')+chip('d','down','Turun')+chip('d','same','Sama'))+grp('Frekuensi',chip('f','','Semua')+chip('f','sering','Makin sering')+chip('f','tetap','Frekuensi tetap')+chip('f','jarang','Makin jarang'))+
+  '<button class="btn '+(dd==='up'&&ff==='sering'?'btn-primary':'btn-ghost')+'" onclick="trenPreset(\''+p+'\')">Naik + Makin sering</button>'+(filtered?'<button class="btn btn-ghost" onclick="trenReset(\''+p+'\')">Reset filter</button>':'')+'</div>';
+ var arr=all.filter(function(o){return (!dd||o.dc===dd)&&(!ff||o.fq===ff)}),cap=filtered?50:10,shown=arr.slice(0,cap);
  var note=withRp?'Urutan berdasarkan <b>total nilai (Rp)</b> setahun. Tren dihitung dari <b>urutan kejadian</b>, bukan per bulan: rata-rata nilai separuh kejadian terakhir dibanding separuh sebelumnya (selisih di bawah 5% = Sama). Produk dengan kurang dari 4 entri belum dinilai. Klik satu baris untuk melihat tiap kejadian.'
   :'<b>Tanpa harga.</b> Urutan berdasarkan <b>jumlah entri</b> setahun, lalu qty. Tren dihitung dari <b>urutan kejadian</b>, bukan per bulan: rata-rata qty separuh kejadian terakhir dibanding separuh sebelumnya (selisih di bawah 5% = Sama). Produk dengan kurang dari 4 entri belum dinilai. Klik satu baris untuk melihat tiap kejadian.';
- var body=arr.length?arr.map(function(o,i){return trenRow(o,i,k,withRp)}).join(''):'<div class="empty">'+I('inbox')+'<p>Belum ada data pada tahun ini.</p></div>';
- return '<section class="grid"><div class="card"><div class="card-h"><h3>Top 10 '+TX[k].sheet+' \u2014 Tahun '+y+(withRp?'':' \u00B7 tanpa harga')+'</h3><div class="tabs">'+tabs+'</div></div><div class="trn-note">'+note+'</div><div class="rlist trn">'+body+'</div></div></section>'}
+ if(filtered)note+=' <b>Filter aktif:</b> filter dijalankan pada semua produk (bukan hanya 10 teratas), urutan tetap dari yang terbesar'+(arr.length>cap?'; menampilkan '+cap+' teratas dari '+fmtID(arr.length)+' produk':'')+'. Produk dengan kurang dari 4 entri tidak ikut karena belum bisa dinilai.';
+ var body=shown.length?shown.map(function(o,i){return trenRow(o,i,k,withRp)}).join(''):'<div class="empty">'+I('inbox')+'<p>'+(filtered?'Tidak ada produk yang cocok dengan filter ini.':'Belum ada data pada tahun ini.')+'</p></div>';
+ return '<section class="grid"><div class="card"><div class="card-h"><h3>'+(filtered?TX[k].sheet+' \u2014 Tahun '+y+' \u00B7 '+fmtID(arr.length)+' produk cocok':'Top 10 '+TX[k].sheet+' \u2014 Tahun '+y)+(withRp?'':' \u00B7 tanpa harga')+'</h3><div class="tabs">'+tabs+'</div></div>'+fb+'<div class="trn-note">'+note+'</div><div class="rlist trn">'+body+'</div></div></section>'}
+function trenFilter(p,g,x){UI[p][g]=(UI[p][g]===x)?'':x;byId('view').innerHTML=renderTren(p)}
+function trenPreset(p){var on=UI[p].d==='up'&&UI[p].f==='sering';UI[p].d=on?'':'up';UI[p].f=on?'':'sering';byId('view').innerHTML=renderTren(p)}
+function trenReset(p){UI[p].d='';UI[p].f='';byId('view').innerHTML=renderTren(p)}
 function trenTab(p,k){UI[p].k=k;byId('view').innerHTML=renderTren(p)}
 /* ---- Status / Penyebab tambah bahan: "smeet 50 druk, kotor 30 druk" ---- */
 UI.pnb={by:'rp'};
