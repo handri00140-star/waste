@@ -1043,6 +1043,8 @@ function lkhOn(){return typeof SB!=='undefined'&&!!SB&&!!SB.c}
 async function lkhLoad(force){if(LKH.busy)return;if(!force&&LKH.rows&&LKH.year===state.year)return;LKH.busy=true;LKH.err='';
  try{var r=await sbAdmin({action:'list',year:state.year},'lkh');LKH.rows=r.rows||[]}catch(e){LKH.err=sbErr(e);LKH.rows=[]}
  LKH.year=state.year;LKH.busy=false;if(state.page==='lkh')byId('view').innerHTML=renderLkh();else if(state.page==='banding')byId('view').innerHTML=renderBanding()}
+function lkhNoNames(){return !!(LKH.rows&&LKH.rows.length&&!LKH.rows.some(function(r){return r.tahapan}))}
+function lkhBanner(){return lkhNoNames()?'<section class="grid"><div class="card"><div class="card-b" style="background:#FFF7ED;color:#9A3412;line-height:1.6"><b>Data LKH yang tersimpan belum punya nama dan tipe tahapan</b>, jadi konversi pcs dan perbandingan mesin cetak belum bisa dihitung. Pastikan (1) SQL terbaru sudah dijalankan (ada kolom <b>tahapan</b> di tabel lkh_kejadian), (2) fungsi <b>lkh</b> sudah memakai kode terbaru (cari tulisan <code>tahapan</code> di kodenya), lalu (3) <b>import ulang jo.xlsx</b> yang lengkap (semua sheet).</div></div></section>':''}
 function lkhBy(v){UI.lkh.by=v;byId('view').innerHTML=renderLkh()}
 function lkhDt(v){if(v==null||v==='')return '';if(typeof v==='number')return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,19).replace('T',' ');return String(v).trim()}
 function lkhAnalyze(wb,name){var ev=null,jo=null,jm=null,mt=null,ms=null,mc=null;
@@ -1118,7 +1120,7 @@ function lkhJoCard(rows,by){var g={};rows.forEach(function(r){var o=g[r.id_jo]||
    '<div class="trn-b">'+(tm?'<span class="pill pill-warn">Tambah bahan: '+fmtID(tm.druk)+' druk</span>':'')+'<span class="pill pill-mut">'+fmtID(o.ev.length)+' kejadian</span></div><span class="rval">'+fmtID(o.pcs)+' pcs</span></summary>'+
    '<div class="trn-d"><table class="trn-t" style="min-width:760px"><thead><tr><th>Tgl</th><th>Kendala</th><th>Waste</th><th>Mesin</th><th>Tahapan</th><th class="num">Qty</th><th class="num">Isi</th><th>Cara hitung</th><th class="num">Pcs</th></tr></thead><tbody>'+rws+'</tbody></table>'+(evs.length>40?'<div style="font-size:11.5px;color:var(--faint);padding-top:6px">Menampilkan 40 dari '+evs.length+' kejadian.</div>':'')+'</div></details>'}).join('');
  return '<section class="grid"><div class="card"><div class="card-h"><h3>JO dengan kendala terbanyak</h3></div><div class="trn-note">Klik satu JO untuk melihat tiap kejadiannya. Label <b>Tambah bahan</b> muncul bila nomor JO yang sama juga ada di menu Tambahan Bahan (dicocokkan setelah awalan "JO-" dan akhiran "-P" dibuang).</div><div class="rlist trn">'+html+'</div></div></section>'}
-function renderLkh(){var head=lkhToolbar();
+function renderLkh(){var head=lkhToolbar()+lkhBanner();
  if(!lkhOn())return head+'<div class="card access">'+I('lock')+'<h2>Perlu koneksi Supabase</h2><p>Data LKH disimpan di server, jadi halaman ini hanya tersedia saat terhubung.</p></div>';
  if(LKH.imp)return head+lkhImpPreview();
  if(LKH.rows===null||LKH.year!==state.year){lkhLoad();return head+'<div class="card"><div class="card-b" style="color:var(--muted)">Memuat data LKH...</div></div>'}
@@ -1182,8 +1184,10 @@ function renderBanding(){var y=state.year,m=state.month,lbl=m>0?MONTHS[m-1]+' '+
  if(!lkhOn())return '<div class="card access">'+I('lock')+'<h2>Perlu koneksi Supabase</h2><p>Data LKH disimpan di server, jadi halaman ini hanya tersedia saat terhubung.</p></div>';
  if(LKH.rows===null||LKH.year!==y){lkhLoad();return '<div class="card"><div class="card-b" style="color:var(--muted)">Memuat data LKH...</div></div>'}
  if(LKH.err)return '<div class="card"><div class="card-b" style="color:#B42318">Gagal memuat data LKH: '+esc(LKH.err)+'</div></div>';
+ if(lkhNoNames())return lkhBanner();
  var ml=bdgMesinList(),mf=UI.bdg.m;if(mf!=='cetak'&&!ml.some(function(x){return String(x.id)===mf}))mf=UI.bdg.m='cetak';
  var all=bdgBuild(mf),n=all.length;
+ if(!ml.length)return '<div class="card"><div class="card-b" style="color:var(--muted)">Tidak ada kejadian LKH dari tahapan mesin cetak ('+BDG_CETAK.map(esc).join(', ')+') pada tahun '+y+'. Periksa daftar tahapan cetak di kode (BDG_CETAK) atau data LKH yang diimpor.</div></div>';
  if(!n)return '<div class="card"><div class="card-b" style="color:var(--muted)">Belum ada data Tambah Bahan pada '+lbl+'.</div></div>';
  var c={sesuai:0,sebagian:0,beda:0,kosong:0,tanpa:0};all.forEach(function(o){c[o.st]++});var adaLkh=n-c.tanpa,f=UI.bdg.f,nama=mf==='cetak'?'semua mesin cetak':((ml.filter(function(x){return String(x.id)===mf})[0]||{}).n||'');
  var mtabs='<button class="tab'+(mf==='cetak'?' active':'')+'" onclick="bdgM(\'cetak\')">Semua mesin cetak ('+fmtID(ml.reduce(function(a,x){return a+x.ev},0))+')</button>'+ml.map(function(x){return '<button class="tab'+(mf===String(x.id)?' active':'')+'" onclick="bdgM(\''+x.id+'\')">'+esc(x.n)+' ('+fmtID(x.ev)+')</button>'}).join('');
