@@ -509,6 +509,7 @@ var PAGES={
  penyebab:{t:'Penyebab Tambah Bahan',s:'Rekap penyebab tambah bahan terbesar · per bulan atau setahun · urut dari tertinggi.'},
  lkh:{t:'LKH — Kendala Produksi',s:'Kejadian kendala dari Laporan Kerja Harian · per kendala, waste, mesin, tahapan, dan JO.'},
  banding:{t:'Banding Tambah Bahan vs LKH',s:'Alasan tambah bahan dibandingkan dengan kendala yang dilaporkan di LKH mesin cetak untuk JO yang sama.'},
+ bandingx:{t:'Banding Tambah Bahan vs Rekap Excel',s:'Penyebab awal tambah bahan dibandingkan dengan temuan akhir di Rekap Pareto (sheet Data Detail) · per JO dan per bulan.'},
  tambahan:{t:'Tambahan Bahan',s:'Tambahan bahan/kertas per JO · nilai = (+) Druk × Harga × Isi.'},
  kurang:{t:'Kurang Qty',s:'Kekurangan kuantitas hasil produksi per JO.'},
  cupk:{t:'CUPK',s:'Catatan biaya CUPK per JO & departemen.'},
@@ -518,10 +519,10 @@ var PAGES={
  import:{t:'Import Excel',s:'Perbarui data dari file Excel — tanpa perlu mengedit file.'},
  pengaturan:{t:'Pengaturan',s:'Profil, target/syarat, akun, dan data.'}};
 var NAV=[
- {group:'Utama',items:['dashboard','lengkap','persen','tahunan','analisa','tren','trenq','penyebab','lkh','banding']},
+ {group:'Utama',items:['dashboard','lengkap','persen','tahunan','analisa','tren','trenq','penyebab','lkh','banding','bandingx']},
  {group:'Transaksi',items:['tambahan','kurang','cupk','retur','daftar']},
  {group:'Administrasi',items:['manual','import','pengaturan']}];
-var PAGE_ICON={dashboard:'grid',lengkap:'table',persen:'percent',tahunan:'trendUp',analisa:'sparkle',tren:'trendUp',trenq:'filter',penyebab:'percent',lkh:'sliders',banding:'table',tambahan:'filePlus',kurang:'minCircle',cupk:'rotate',retur:'undo',daftar:'table',manual:'pencil',import:'upload',pengaturan:'sliders'};
+var PAGE_ICON={dashboard:'grid',lengkap:'table',persen:'percent',tahunan:'trendUp',analisa:'sparkle',tren:'trendUp',trenq:'filter',penyebab:'percent',lkh:'sliders',banding:'table',bandingx:'percent',tambahan:'filePlus',kurang:'minCircle',cupk:'rotate',retur:'undo',daftar:'table',manual:'pencil',import:'upload',pengaturan:'sliders'};
 var TX={
  tambahan:{key:'tambahan',title:'Tambahan Bahan (Kertas)',sheet:'Tambahan',desc:'Nilai = (+) Druk × Harga Jual × Isi',calcLabel:'HARGA (+) = Druk × Harga × Isi',
   val:function(t){return (+t.druk||0)*(+t.harga||0)*(+t.isi||0)},
@@ -719,7 +720,7 @@ function isAdmin(){var u=curUser();return !!u&&u.role==='admin'}
 function permLvl(mod){var u=curUser();if(!u)return 0;if(u.role==='admin')return 3;return PERM_RANK[(u.perms||{})[mod]]||0}
 function can(mod,need){return permLvl(mod)>=PERM_RANK[need]}
 function requirePerm(mod,need){if(can(mod,need))return true;toast('Akses terbatas — Anda tidak memiliki hak '+(need==='edit'?'edit':need==='input'?'input':'lihat')+' untuk menu ini.','err');return false}
-function pageAllowed(p){if(p==='pengaturan')return isAdmin();if(p==='analisa')return can('dashboard','view');if(p==='tren')return can('dashboard','view');if(p==='trenq')return can('daftar','view');if(p==='penyebab')return can('dashboard','view');if(p==='lkh')return can('dashboard','view');if(p==='banding')return can('dashboard','view');for(var i=0;i<PERM_MODS.length;i++)if(PERM_MODS[i].k===p)return can(p,'view');return true}
+function pageAllowed(p){if(p==='pengaturan')return isAdmin();if(p==='analisa')return can('dashboard','view');if(p==='tren')return can('dashboard','view');if(p==='trenq')return can('daftar','view');if(p==='penyebab')return can('dashboard','view');if(p==='lkh')return can('dashboard','view');if(p==='banding')return can('dashboard','view');if(p==='bandingx')return can('dashboard','view');for(var i=0;i<PERM_MODS.length;i++)if(PERM_MODS[i].k===p)return can(p,'view');return true}
 function firstAllowedPage(){for(var g=0;g<NAV.length;g++)for(var i=0;i<NAV[g].items.length;i++)if(pageAllowed(NAV[g].items[i]))return NAV[g].items[i];return null}
 function canMasterExport(){return ['lengkap','persen','tambahan','kurang','cupk','retur'].every(function(k){return can(k,'view')})}
 function requireAdmin(){
@@ -873,12 +874,12 @@ function route(){if(!SESSION)return;var p=(location.hash||'').replace(/^#\//,'')
  state.page=p;closeSb();document.querySelectorAll('.nav-item').forEach(function(a){a.classList.toggle('active',a.dataset.p===p)});
  byId('tbTitle').textContent=PAGES[p].t;byId('tbSub').textContent=PAGES[p].s;byId('tbPeriod').innerHTML=periodHTML();destroyCharts();window.scrollTo(0,0);
  var v=byId('view');
- if(p==='dashboard')v.innerHTML=renderDashboard();else if(p==='analisa')v.innerHTML=aiCard();else if(p==='tren'||p==='trenq')v.innerHTML=renderTren(p);else if(p==='penyebab')v.innerHTML=renderPenyebab();else if(p==='lkh')v.innerHTML=renderLkh();else if(p==='banding')v.innerHTML=renderBanding();else if(p==='lengkap')v.innerHTML=renderRekap('full');
+ if(p==='dashboard')v.innerHTML=renderDashboard();else if(p==='analisa')v.innerHTML=aiCard();else if(p==='tren'||p==='trenq')v.innerHTML=renderTren(p);else if(p==='penyebab')v.innerHTML=renderPenyebab();else if(p==='lkh')v.innerHTML=renderLkh();else if(p==='banding')v.innerHTML=renderBanding();else if(p==='bandingx')v.innerHTML=renderBandingRkp();else if(p==='lengkap')v.innerHTML=renderRekap('full');
  else if(p==='persen')v.innerHTML=renderRekap('pct');else if(p==='tahunan')v.innerHTML=renderTahunan();
  else if(p==='daftar')v.innerHTML=renderDaftar();else if(TX[p])v.innerHTML=renderTx(p);else if(p==='manual')v.innerHTML=renderManual();else if(p==='import')v.innerHTML=renderImport();else if(p==='pengaturan')v.innerHTML=renderSettings();
  if(p==='dashboard')dashInit();if(p==='tahunan')initTahunanCharts();if(TX[p])renderTxZone(p);if(p==='daftar')renderDfZone();if(p==='manual')updateManualTotals()}
 window.addEventListener('hashchange',route);
-function periodHTML(){var years=dataYears();var withMonth=['dashboard','analisa','penyebab','lkh','banding','tambahan','kurang','cupk','retur','daftar'].indexOf(state.page)>=0;
+function periodHTML(){var years=dataYears();var withMonth=['dashboard','analisa','penyebab','lkh','banding','bandingx','tambahan','kurang','cupk','retur','daftar'].indexOf(state.page)>=0;
  return '<label class="select">'+I('calendar')+'<select onchange="setYear(this.value)">'+years.map(function(y){return '<option value="'+y+'"'+(y===state.year?' selected':'')+'>'+y+'</option>'}).join('')+'</select></label>'+
  (withMonth?'<label class="select">'+I('filter')+'<select onchange="setMonth(+this.value)"><option value="0"'+(state.month===0?' selected':'')+'>Semua Bulan</option>'+MONTHS.map(function(m,i){return '<option value="'+(i+1)+'"'+(state.month===i+1?' selected':'')+'>'+m+'</option>'}).join('')+'</select></label>':'')}
 function setYear(v){state.year=+v;route()}function setMonth(v){state.month=+v;route()}
@@ -1159,6 +1160,174 @@ function renderLkh(){var head=lkhToolbar()+lkhBanner();
  return head+kpi+lkhCard('Kendala terbanyak \u2014 '+lbl,'Diurutkan dari yang terbesar ke terkecil berdasarkan '+urut+'. Pilih bulan di atas untuk satu bulan saja.',kend,T,by,15)+
   lkhCard('Jenis waste terbanyak \u2014 '+lbl,'',was,T,by,10)+lkhCard('Per mesin \u2014 '+lbl,'Konversi pcs mengikuti <b>tipe tahapan</b> tiap kejadian, bukan mesinnya, jadi satu mesin bisa memuat kejadian yang dikali isi maupun yang apa adanya.',mes,T,by,10)+lkhCard('Per tahapan \u2014 '+lbl,'',tah,T,by,12)+bulan+lkhJoCard(rows,by)}
 /* ---- Banding: alasan Tambah Bahan (awal) vs kendala LKH di mesin cetak (realisasi) ---- */
+/* ---- Banding Tambah Bahan vs Rekap Pareto (Excel, sheet Data Detail) ---- */
+var RKP={rows:null,year:null,busy:false,err:'',imp:null,saving:false,local:[],warn:'',all:[]};
+UI.rkp={mode:'jo',f:'semua',q:'',c:'',t:'',lim:40};
+var RKP_BLN={januari:1,februari:2,maret:3,april:4,mei:5,juni:6,juli:7,agustus:8,september:9,oktober:10,november:11,desember:12,jan:1,feb:2,mar:3,apr:4,jun:6,jul:7,agu:8,agt:8,sep:9,sept:9,okt:10,nov:11,des:12};
+var RKP_STOP={pond:1,tidak:1,belum:1,sama:1,dengan:1,yang:1,dari:1,pada:1,untuk:1,karena:1,proses:1,kendala:1,pending:1,manual:1,druk:1,kertas:1,setting:1,settingan:1,operator:1,mesin:1,sample:1,jadi:1};
+var RKP_ST={sesuai:['pill-ok','Sesuai'],sebagian:['pill-warn','Sebagian sesuai'],beda:['pill-bad','Tidak sesuai'],kosong:['pill-mut','Penyebab belum diisi'],tanpa:['pill-mut','Tanpa tambah bahan'],noexcel:['pill-mut','Belum ada di Excel']};
+function rkpOn(){return lkhOn()}
+function rkpNorm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim()}
+function rkpWords(s){return rkpNorm(s).split(' ').filter(function(w){return w.length>=4&&!RKP_STOP[w]&&!/^\d+$/.test(w)})}
+function rkpStrip(s){return String(s||'').replace(/^\s*[A-Za-z]?\d+(?:[.\-]\d+)*\s+/,'')}
+function rkpSame(a,b){return a===b||(a.length>=5&&b.length>=5&&(a.indexOf(b)===0||b.indexOf(a)===0))}
+function rkpMatch(cause,text){var c=rkpNorm(cause),t=rkpNorm(text);if(!c||!t)return false;
+ if(Math.min(c.length,t.length)>=4&&(t.indexOf(c)>=0||c.indexOf(t)>=0))return true;
+ var cw=rkpWords(cause),tw=rkpWords(text);if(!cw.length||!tw.length)return false;
+ var n=cw.filter(function(w){return tw.some(function(x){return rkpSame(w,x)})}).length;return n>=(cw.length<=2?cw.length:Math.ceil(cw.length*0.6))}
+function rkpP(a,b){return b>0?fmtPct(a/b*100):'\u2014'}
+function rkpPer(){var m=state.month;return m>0?state.year+'-'+('0'+m).slice(-2):''}
+function rkpLbl(p){return MONTHS[+String(p).slice(5,7)-1]+' '+String(p).slice(0,4)}
+/* ---------- muat & simpan ---------- */
+async function rkpLoad(force){if(RKP.busy)return;if(!force&&RKP.rows&&RKP.year===state.year)return;RKP.busy=true;RKP.err='';
+ try{RKP.rows=await sbAll(function(){return SB.c.from('rekap_pareto_detail').select('*').like('periode',state.year+'-%').order('id')})}catch(e){RKP.err=sbErr(e);RKP.rows=[]}
+ RKP.year=state.year;RKP.busy=false;if(state.page==='bandingx')rkpRender()}
+function rkpRender(){byId('view').innerHTML=renderBandingRkp()}
+function rkpAllRows(){var loc={};RKP.local.forEach(function(r){loc[r.periode]=1});return (RKP.rows||[]).filter(function(r){return !loc[r.periode]}).concat(RKP.local.filter(function(r){return String(r.periode).slice(0,4)===String(state.year)}))}
+function rkpAnalyze(wb,fname){var names=wb.SheetNames,dn=names.filter(function(n){return /data\s*detail/i.test(n)})[0];
+ if(!dn)throw new Error('Sheet "Data Detail" tidak ditemukan. Sheet yang ada: '+names.join(', '));
+ var js=XLSX.utils.sheet_to_json(wb.Sheets[dn],{defval:''});if(!js.length)throw new Error('Sheet Data Detail kosong.');
+ var h=Object.keys(js[0]);function col(re){return h.filter(function(x){return re.test(x)})[0]}
+ var cJo=col(/^no\s*jo$/i),cDef=col(/^nama\s*defect$/i),cKend=col(/^kendala$/i),cQty=col(/^qty/i),cKod=col(/^kode\s*defect$/i),cKat=col(/^kategori/i),cCus=col(/^customer$/i),cIo=col(/^no\s*io$/i),cPro=col(/^produk$/i),miss=[];
+ if(!cJo)miss.push('No JO');if(!cDef)miss.push('Nama Defect');if(!cKend)miss.push('Kendala');if(!cQty)miss.push('Qty Defect');
+ if(miss.length)throw new Error('Kolom wajib tidak ada di Data Detail: '+miss.join(', '));
+ var rows=[],skip=0,jo={},tot=0;
+ js.forEach(function(r){var no=String(r[cJo]||'').trim(),q=Number(String(r[cQty]).replace(/[^0-9.\-]/g,''));if(!no||!isFinite(q)||String(r[cQty])===''){skip++;return}
+  rows.push({customer:cCus?String(r[cCus]).trim():'',kode_defect:cKod?String(r[cKod]).trim():'',nama_defect:String(r[cDef]||'').trim(),kategori_kendala:cKat?String(r[cKat]).trim():'',kendala:String(r[cKend]||'').trim(),qty_defect:q,no_jo:no,no_io:cIo?String(r[cIo]).trim():'',produk:cPro?String(r[cPro]).trim():''});jo[no]=1;tot+=q});
+ if(!rows.length)throw new Error('Tidak ada baris data yang valid di sheet Data Detail.');
+ var per='',tr=null,rn=names.filter(function(n){return /ringkasan/i.test(n)})[0];
+ if(rn){XLSX.utils.sheet_to_json(wb.Sheets[rn],{header:1,defval:''}).forEach(function(r){var a=String(r[0]||''),m=a.match(/periode[^0-9]*\d{1,2}\s*-\s*\d{1,2}\s+([A-Za-z]+)\s+(\d{4})/i);
+  if(m&&!per){var b=RKP_BLN[m[1].toLowerCase()];if(b)per=m[2]+'-'+('0'+b).slice(-2)}
+  if(/^total defect/i.test(a)&&tr===null&&r[1]!==''&&isFinite(Number(r[1])))tr=Number(r[1])})}
+ if(!per){var fm=String(fname).match(/(jan|feb|mar|apr|mei|jun|jul|agu|sep|okt|nov|des)[a-z]*[\s_\-]*(\d{4})/i);if(fm){var b2=RKP_BLN[fm[1].toLowerCase()];if(b2)per=fm[2]+'-'+('0'+b2).slice(-2)}}
+ return {file:fname,sheet:dn,rows:rows,skip:skip,jo:Object.keys(jo).length,tot:tot,ringkasan:tr,periode:per}}
+function rkpPick(inp){var f=inp.files&&inp.files[0];if(!f)return;var rd=new FileReader();
+ rd.onload=function(e){try{RKP.imp=rkpAnalyze(XLSX.read(new Uint8Array(e.target.result),{type:'array'}),f.name);rkpRender()}catch(x){toast('Gagal membaca Excel: '+sbErr(x),'err')}inp.value=''};rd.readAsArrayBuffer(f)}
+function rkpCancel(){RKP.imp=null;rkpRender()}
+function rkpSetPer(){var y=byId('rkpY').value,m=byId('rkpM').value;RKP.imp.periode=(/^\d{4}$/.test(y)&&m)?(y+'-'+('0'+m).slice(-2)):'';rkpRender()}
+async function rkpSave(){var im=RKP.imp;if(!im||RKP.saving)return;if(!/^\d{4}-\d{2}$/.test(im.periode||'')){toast('Pilih bulan dan tahun periode dulu.','err');return}
+ RKP.saving=true;var p=im.periode,batch=Date.now().toString(36),rows=im.rows.map(function(r){return Object.assign({periode:p,batch:batch},r)});
+ try{for(var a=0;a<rows.length;a+=500){var r=await SB.c.from('rekap_pareto_detail').insert(rows.slice(a,a+500));if(r.error)throw r.error;toast('Menyimpan rekap... '+Math.min(rows.length,a+500)+' / '+rows.length)}
+  var d=await SB.c.from('rekap_pareto_detail').delete().eq('periode',p).neq('batch',batch);if(d.error)throw d.error;
+  toast('Rekap '+rkpLbl(p)+' tersimpan: '+rows.length+' baris.');RKP.local=RKP.local.filter(function(x){return x.periode!==p});RKP.warn='';RKP.imp=null;RKP.saving=false;RKP.rows=null;
+  if(String(p).slice(0,4)!==String(state.year)){state.year=+String(p).slice(0,4);if(typeof route==='function')route();return}
+  rkpRender()}
+ catch(e){try{await SB.c.from('rekap_pareto_detail').delete().eq('batch',batch)}catch(x){}
+  RKP.saving=false;RKP.local=RKP.local.filter(function(x){return x.periode!==p}).concat(rows);RKP.imp=null;
+  RKP.warn='Rekap '+rkpLbl(p)+' belum tersimpan ke database ('+sbErr(e)+'). Datanya hanya ada di sesi ini dan hilang saat halaman dimuat ulang. Pastikan SQL tabel rekap_pareto_detail sudah dijalankan, lalu import ulang.';
+  toast('Gagal menyimpan ke database. Data dipakai sementara di sesi ini.','err');rkpRender()}}
+/* ---------- bangun perbandingan ---------- */
+function rkpBuild(){var rows=rkpAllRows(),tb={};
+ ((DB.tx&&DB.tx.tambahan)||[]).forEach(function(t){if(t.rmfg)return;var k=lkhKey(t.jo);if(!k)return;
+  var o=tb[k]||(tb[k]={jo:t.jo,produk:t.produk,druk:0,rp:0,ent:[],cs:{}}),dr=+t.druk||0,v=Math.round(TX.tambahan.val(t)||0);
+  o.druk+=dr;o.rp+=v;o.ent.push({tgl:t.tgl,druk:dr,rp:v,status:String(t.status||'').trim()});
+  sebabParse(t.status,dr).items.forEach(function(p){if(p.kosong)return;var ck=p.n.toLowerCase(),c=o.cs[ck]||(o.cs[ck]={n:p.n,d:0});c.d+=p.d})});
+ function causes(t){return t?Object.keys(t.cs).map(function(x){return {n:t.cs[x].n,d:t.cs[x].d}}).sort(function(a,b){return b.d-a.d}):[]}
+ var g={},keys={},pers={};
+ rows.forEach(function(r){var k=lkhKey(r.no_jo),gk=r.periode+'|'+k;keys[k]=1;pers[r.periode]=1;
+  var o=g[gk]||(g[gk]={k:k,periode:r.periode,jo:r.no_jo,customer:r.customer,produk:r.produk,qty:0,df:{}}),q=+r.qty_defect||0;o.qty+=q;
+  var dk=(r.kode_defect||'')+'|'+r.nama_defect,d=o.df[dk]||(o.df[dk]={n:r.nama_defect,kode:r.kode_defect,qty:0,kd:{}});d.qty+=q;
+  var kk=r.kategori_kendala+'|'+r.kendala,x=d.kd[kk]||(d.kd[kk]={n:r.kendala,kat:r.kategori_kendala,qty:0});x.qty+=q});
+ var out=[];
+ Object.keys(g).forEach(function(gk){var o=g[gk],t=tb[o.k]||null,cs=causes(t),
+  dfs=Object.keys(o.df).map(function(x){var d=o.df[x];d.kds=Object.keys(d.kd).map(function(z){return d.kd[z]}).sort(function(a,b){return b.qty-a.qty});return d}).sort(function(a,b){return b.qty-a.qty});
+  cs.forEach(function(c){var by={};dfs.forEach(function(d){if(rkpMatch(c.n,d.n)){d.hit=true;by[d.n]=1}d.kds.forEach(function(z){if(rkpMatch(c.n,rkpStrip(z.n))){z.hit=true;by[rkpStrip(z.n)]=1}})});c.by=Object.keys(by);c.hit=c.by.length>0});
+  var nh=cs.filter(function(c){return c.hit}).length,st=!t?'tanpa':(!cs.length?'kosong':(nh===cs.length?'sesuai':(nh>0?'sebagian':'beda')));
+  out.push({k:o.k,periode:o.periode,jo:o.jo,customer:o.customer,produk:o.produk||(t&&t.produk)||'',qty:o.qty,df:dfs,t:t,cs:cs,st:st})});
+ Object.keys(tb).forEach(function(k){if(keys[k])return;var t=tb[k],ps={};t.ent.forEach(function(e){var p=String(e.tgl).slice(0,7);if(pers[p])ps[p]=1});
+  Object.keys(ps).forEach(function(p){out.push({k:k,periode:p,jo:t.jo,customer:'',produk:t.produk,qty:0,df:[],t:t,cs:causes(t),st:'noexcel'})})});
+ out.sort(function(a,b){return ((b.t?b.t.druk:-1)-(a.t?a.t.druk:-1))||(b.qty-a.qty)});return out}
+function rkpScope(){var p=rkpPer(),a=RKP.all||[];return p?a.filter(function(o){return o.periode===p}):a}
+function rkpStat(list){var S={sesuai:0,sebagian:0,beda:0,kosong:0,tanpa:0,noexcel:0,ex:0,exTb:0,qty:0};
+ list.forEach(function(o){S[o.st]++;if(o.st==='noexcel')return;S.ex++;S.qty+=o.qty;if(o.t)S.exTb++});S.cmp=S.sesuai+S.sebagian+S.beda;S.ok=S.sesuai+S.sebagian;return S}
+function rkpBulanRows(all){var pm={};all.forEach(function(o){(pm[o.periode]=pm[o.periode]||[]).push(o)});
+ var rows=Object.keys(pm).sort().map(function(p){return {p:p,n:rkpLbl(p),S:rkpStat(pm[p])}});if(rows.length>1)rows.push({p:'',n:'Total',S:rkpStat(all),tot:1});return rows}
+function rkpBar(a,b){var v=b>0?a/b*100:0;return '<div style="display:flex;align-items:center;gap:8px"><div style="width:84px;height:6px;background:var(--line2);border-radius:3px"><div style="width:'+Math.min(100,v).toFixed(1)+'%;height:6px;background:var(--accent);border-radius:3px"></div></div><b>'+rkpP(a,b)+'</b></div>'}
+function rkpBulanCard(all){var rows=rkpBulanRows(all);if(!rows.length)return '';
+ return '<section class="grid"><div class="card"><div class="card-h"><h3>Semua JO per bulan</h3></div><div class="trn-note">Satu baris = satu Excel rekap yang sudah diimport. <b>Akurasi</b> = JO yang minimal satu penyebab awal tambah bahannya cocok dengan temuan di Excel, dibagi JO yang bisa dibandingkan (ada penyebab terisi <b>dan</b> ada di Excel). <b>Cakupan</b> = porsi JO di Excel yang punya data tambah bahan.</div><div class="trn-d" style="padding:6px 18px 16px"><table class="trn-t" style="min-width:860px"><thead><tr><th>Bulan</th><th class="num">JO di Excel</th><th class="num">Ada tambah bahan</th><th class="num">Cakupan</th><th class="num">Bisa dibanding</th><th class="num">Sesuai</th><th class="num">Sebagian</th><th class="num">Tidak sesuai</th><th>Akurasi</th><th class="num">Defect (pcs)</th><th class="num">Tambah bahan belum di Excel</th></tr></thead><tbody>'+
+  rows.map(function(r){var S=r.S,b=r.tot?'<b>':'',e=r.tot?'</b>':'';return '<tr'+(r.tot?' style="border-top:1px solid var(--line)"':'')+'><td>'+b+esc(r.n)+e+'</td><td class="num mono">'+fmtID(S.ex)+'</td><td class="num mono">'+fmtID(S.exTb)+'</td><td class="num mono">'+rkpP(S.exTb,S.ex)+'</td><td class="num mono">'+fmtID(S.cmp)+'</td><td class="num mono">'+fmtID(S.sesuai)+'</td><td class="num mono">'+fmtID(S.sebagian)+'</td><td class="num mono">'+fmtID(S.beda)+'</td><td>'+rkpBar(S.ok,S.cmp)+'</td><td class="num mono">'+fmtID(S.qty)+'</td><td class="num mono">'+fmtID(S.noexcel)+'</td></tr>'}).join('')+'</tbody></table></div></div></section>'}
+function rkpAggCause(list){var g={};
+ list.forEach(function(o){if(o.st==='noexcel'||o.st==='tanpa'||!o.cs.length)return;o.cs.forEach(function(c){var k=c.n.toLowerCase(),a=g[k]||(g[k]={n:c.n,jo:0,d:0,hit:0,t:{}});a.jo++;a.d+=c.d;if(c.hit)a.hit++;
+  o.df.forEach(function(d){var x=a.t[d.n]||(a.t[d.n]={n:d.n,jo:0,q:0});x.jo++;x.q+=d.qty})})});
+ return Object.keys(g).map(function(k){var a=g[k];a.top=Object.keys(a.t).map(function(x){return a.t[x]}).sort(function(p,q){return (q.jo-p.jo)||(q.q-p.q)}).slice(0,3);return a}).sort(function(a,b){return b.d-a.d}).slice(0,20)}
+function rkpAggCard(list,lbl){var ag=rkpAggCause(list);if(!ag.length)return '';
+ return '<section class="grid"><div class="card"><div class="card-h"><h3>Penyebab awal tambah bahan \u2192 temuan akhir di Excel \u2014 '+esc(lbl)+'</h3></div><div class="trn-note">Per penyebab yang diisi saat tambah bahan: berapa JO yang temuan akhirnya (nama defect atau kendala) memang sama, dan temuan apa yang paling sering muncul pada JO tersebut. Pasangan yang sama maknanya tetapi beda istilah akan terlihat di sini.</div><div class="trn-d" style="padding:6px 18px 16px"><table class="trn-t" style="min-width:760px"><thead><tr><th>Penyebab awal</th><th class="num">JO</th><th class="num">Druk</th><th>Terkonfirmasi di Excel</th><th>Temuan akhir teratas (nama defect)</th></tr></thead><tbody>'+
+  ag.map(function(a){return '<tr><td><b>'+esc(a.n)+'</b></td><td class="num mono">'+fmtID(a.jo)+'</td><td class="num mono">'+fmtID(a.d)+'</td><td>'+rkpBar(a.hit,a.jo)+'<span style="font-size:11px;color:var(--muted)">'+fmtID(a.hit)+' dari '+fmtID(a.jo)+' JO</span></td><td>'+a.top.map(function(k){return esc(k.n)+' <span class="mono" style="color:var(--muted)">'+fmtID(k.jo)+' JO \u00B7 '+fmtID(k.q)+' pcs</span>'}).join('<br>')+'</td></tr>'}).join('')+'</tbody></table></div></div></section>'}
+/* ---------- tampilan per JO ---------- */
+function rkpAwal(o){return o.cs.length?o.cs.map(function(c){return c.n+' '+fmtID(c.d)+' druk'}).join(', '):(o.t?'penyebab belum diisi':'')}
+function rkpAkhir(o,n){return o.df.slice(0,n||2).map(function(d){return d.n+' ('+fmtID(d.qty)+' pcs)'}).join(', ')}
+function rkpFilter(list){var b=UI.rkp,q=String(b.q||'').toLowerCase().trim();
+ return list.filter(function(o){if(b.f!=='semua'&&o.st!==b.f)return false;
+  if(b.c&&!o.cs.some(function(x){return x.n.toLowerCase()===b.c}))return false;
+  if(b.t&&!o.df.some(function(x){return x.n===b.t}))return false;
+  if(q&&(o.jo+' '+o.produk+' '+(o.customer||'')).toLowerCase().indexOf(q)<0)return false;return true})}
+function rkpSet(k,v){UI.rkp[k]=v;if(k!=='lim')UI.rkp.lim=40;rkpRefresh()}
+function rkpMode(m){UI.rkp.mode=m;rkpRender()}
+function rkpReset(){UI.rkp.f='semua';UI.rkp.q='';UI.rkp.c='';UI.rkp.t='';UI.rkp.lim=40;rkpRender()}
+function rkpRefresh(){var a=byId('rkpItems');if(!a)return;var list=rkpFilter(rkpScope());a.innerHTML=rkpItemsHTML(list);var c=byId('rkpCount');if(c)c.textContent=fmtID(list.length)+' JO';var t=byId('rkpTabs');if(t)t.innerHTML=rkpTabsHTML(rkpScope())}
+function rkpTabsHTML(sc){var b=UI.rkp,cnt={semua:sc.length};sc.forEach(function(o){cnt[o.st]=(cnt[o.st]||0)+1});
+ var T=[['semua','Semua'],['sesuai','Sesuai'],['sebagian','Sebagian sesuai'],['beda','Tidak sesuai'],['kosong','Penyebab belum diisi'],['tanpa','Tanpa tambah bahan'],['noexcel','Belum ada di Excel']];
+ return '<div class="tabs" style="flex-wrap:wrap">'+T.map(function(x){return '<button class="tab'+(b.f===x[0]?' active':'')+'" onclick="rkpSet(\'f\',\''+x[0]+'\')">'+x[1]+' <span class="mono" style="opacity:.55">'+fmtID(cnt[x[0]]||0)+'</span></button>'}).join('')+'</div>'}
+function rkpFilterBar(sc){var b=UI.rkp,cm={},dm={};
+ sc.forEach(function(o){o.cs.forEach(function(c){var k=c.n.toLowerCase(),x=cm[k]||(cm[k]={n:c.n,k:k,d:0});x.d+=c.d});o.df.forEach(function(d){var x=dm[d.n]||(dm[d.n]={n:d.n,q:0});x.q+=d.qty})});
+ var co=Object.keys(cm).map(function(k){return cm[k]}).sort(function(a,z){return z.d-a.d}).slice(0,80),dd=Object.keys(dm).map(function(k){return dm[k]}).sort(function(a,z){return z.q-a.q}).slice(0,80);
+ return '<div style="padding:12px 18px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line2)"><input class="input" placeholder="Cari JO / produk / customer" value="'+esc(b.q)+'" oninput="rkpSet(\'q\',this.value)" style="width:220px">'+
+  '<select class="input" onchange="rkpSet(\'c\',this.value)" style="width:auto;max-width:250px"><option value="">Semua penyebab awal</option>'+co.map(function(x){return '<option value="'+esc(x.k)+'"'+(b.c===x.k?' selected':'')+'>'+esc(x.n)+'</option>'}).join('')+'</select>'+
+  '<select class="input" onchange="rkpSet(\'t\',this.value)" style="width:auto;max-width:250px"><option value="">Semua temuan akhir</option>'+dd.map(function(x){return '<option value="'+esc(x.n)+'"'+(b.t===x.n?' selected':'')+'>'+esc(x.n)+'</option>'}).join('')+'</select>'+
+  '<button class="btn btn-ghost" onclick="rkpReset()">Reset filter</button></div><div id="rkpTabs" style="padding:12px 18px;border-bottom:1px solid var(--line2)">'+rkpTabsHTML(sc)+'</div>'}
+function rkpItemsHTML(list){var lim=UI.rkp.lim;if(!list.length)return '<div class="empty">'+I('inbox')+'<p>Tidak ada JO untuk filter ini.</p></div>';
+ return list.slice(0,lim).map(rkpRow).join('')+(list.length>lim?'<div style="padding:12px 18px"><button class="btn btn-ghost" onclick="rkpSet(\'lim\','+(lim+40)+')">Tampilkan '+Math.min(40,list.length-lim)+' lagi (sisa '+fmtID(list.length-lim)+')</button></div>':'')}
+function rkpRow(o,i){var st=RKP_ST[o.st],aw=rkpAwal(o),ak=rkpAkhir(o,2),
+ left=o.t?'<table class="trn-t" style="min-width:300px"><thead><tr><th>Tgl</th><th class="num">(+) Druk</th><th>Penyebab diisi</th></tr></thead><tbody>'+o.t.ent.map(function(e){return '<tr><td>'+fmtDateId(e.tgl)+'</td><td class="num">'+fmtID(e.druk)+'</td><td>'+(e.status?esc(e.status):'<span style="color:var(--faint)">belum diisi</span>')+'</td></tr>'}).join('')+'</tbody></table>'+
+   (o.cs.length?'<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">'+o.cs.map(function(c){var ok=o.st!=='noexcel';return '<span class="pill '+(!ok?'pill-mut':(c.hit?'pill-ok':'pill-bad'))+'"'+(c.hit&&c.by.length?' title="Cocok dengan: '+esc(c.by.join(', '))+'"':'')+'>'+(ok&&c.hit?'\u2713 ':'')+esc(c.n)+' \u00B7 '+fmtID(c.d)+' druk</span>'}).join('')+'</div>':''):'<div style="color:var(--muted);padding:6px 0">JO ini tidak punya data tambah bahan.</div>',
+ right=o.df.length?'<table class="trn-t" style="min-width:380px"><thead><tr><th>Temuan (defect \u2192 kendala)</th><th>Kategori</th><th class="num">Qty (pcs)</th></tr></thead><tbody>'+o.df.slice(0,12).map(function(d){return '<tr style="background:'+(d.hit?'#ECFDF3':'transparent')+'"><td><b>'+(d.hit?'\u2713 ':'')+esc(d.n)+'</b>'+(d.kode?' <span style="color:var(--muted)">'+esc(d.kode)+'</span>':'')+'</td><td></td><td class="num"><b>'+fmtID(d.qty)+'</b></td></tr>'+
+    d.kds.slice(0,6).map(function(z){return '<tr style="background:'+(z.hit?'#ECFDF3':'transparent')+'"><td style="padding-left:16px;color:var(--muted)">'+(z.hit?'\u2713 ':'')+esc(z.n)+'</td><td>'+esc(z.kat)+'</td><td class="num">'+fmtID(z.qty)+'</td></tr>'}).join('')}).join('')+'</tbody></table>'+(o.df.length>12?'<div style="font-size:11.5px;color:var(--faint);padding-top:6px">Menampilkan 12 dari '+o.df.length+' jenis defect.</div>':''):'<div style="color:var(--muted);padding:6px 0">JO ini belum ada di Excel rekap yang sudah diimport untuk periode ini.</div>';
+ return '<details class="trn-i"><summary><span class="mono" style="width:22px;color:var(--faint)">'+(i+1)+'</span><div class="rprod" style="flex:1;min-width:220px"><div>'+esc(o.jo)+' \u00B7 '+esc(o.produk||'-')+'</div><span class="rjo">'+(aw?'Awal: '+esc(aw):'')+(aw&&ak?' \u2192 ':'')+(ak?'Akhir: '+esc(ak):'')+'</span></div><div class="trn-b"><span class="pill '+st[0]+'">'+st[1]+'</span></div><span class="rval">'+(o.t?fmtID(o.t.druk)+' druk':'\u2014')+'</span></summary>'+
+  '<div class="trn-d" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px"><div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Awal \u2014 Tambah bahan</div>'+left+'</div><div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px">Akhir \u2014 Rekap Excel'+(o.qty?' \u00B7 '+fmtID(o.qty)+' pcs':'')+'</div>'+right+'</div></div></details>'}
+function rkpExport(){var sc=rkpScope(),list=rkpFilter(sc),
+ A=[['Periode','No JO','Customer','Produk','Status','Total (+) Druk','Penyebab Awal (Tambah Bahan)','Penyebab yang terkonfirmasi','Temuan Akhir (nama defect)','Total Defect (pcs)']],
+ B=[['Periode','No JO','Kode Defect','Nama Defect','Kategori Kendala','Kendala','Qty (pcs)','Cocok dengan penyebab awal']],C=[['No JO','Tgl Tambah Bahan','(+) Druk','Nilai (Rp)','Penyebab diisi']],D=[['Bulan','JO di Excel','Ada tambah bahan','Cakupan','Bisa dibanding','Sesuai','Sebagian','Tidak sesuai','Akurasi','Defect (pcs)','Tambah bahan belum di Excel']];
+ list.forEach(function(o){A.push([o.periode,o.jo,o.customer||'',o.produk,RKP_ST[o.st][1],o.t?o.t.druk:'',rkpAwal(o),o.cs.filter(function(c){return c.hit}).map(function(c){return c.n}).join(', '),o.df.map(function(d){return d.n+' ('+fmtID(d.qty)+')'}).join('; '),o.qty||'']);
+  o.df.forEach(function(d){d.kds.forEach(function(z){B.push([o.periode,o.jo,d.kode||'',d.n,z.kat,z.n,z.qty,o.cs.length?((d.hit||z.hit)?'Ya':'Tidak'):''])})});
+  if(o.t&&o.st!=='noexcel')o.t.ent.forEach(function(e){C.push([o.jo,e.tgl,e.druk,e.rp,e.status])})});
+ rkpBulanRows(RKP.all||[]).forEach(function(r){var S=r.S;D.push([r.n,S.ex,S.exTb,S.ex?S.exTb/S.ex:'',S.cmp,S.sesuai,S.sebagian,S.beda,S.cmp?S.ok/S.cmp:'',S.qty,S.noexcel])});
+ var wb=XLSX.utils.book_new();
+ [[A,'Banding per JO',[10,18,28,40,20,12,50,34,50,12]],[B,'Detail Akhir (Excel)',[10,18,10,26,14,40,10,14]],[C,'Detail Tambah Bahan',[18,12,10,14,60]],[D,'Ringkasan per bulan',[18,10,12,10,12,8,10,12,10,12,16]]].forEach(function(x){var ws=XLSX.utils.aoa_to_sheet(x[0]);ws['!cols']=x[2].map(function(w){return {wch:w}});XLSX.utils.book_append_sheet(wb,ws,x[1])});
+ XLSX.writeFile(wb,'Banding_TambahBahan_vs_Rekap_'+(rkpPer()||state.year)+'.xlsx')}
+/* ---------- halaman ---------- */
+function rkpHead(){var m=UI.rkp.mode,tb=function(k,l){return '<button class="tab'+(m===k?' active':'')+'" onclick="rkpMode(\''+k+'\')">'+l+'</button>'};
+ return '<section class="grid"><div class="card"><div class="card-h"><h3>Tambah Bahan vs Rekap Pareto (Excel)</h3><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="tabs">'+tb('jo','Per JO')+tb('bulan','Semua JO per bulan')+'</div><button class="btn btn-ghost" onclick="rkpLoad(true)">'+I('refresh')+' Muat ulang</button>'+
+  (isAdmin()?'<button class="btn btn-primary" onclick="byId(\'fileRkp\').click()">'+I('upload')+' Import Excel Rekap</button><input type="file" id="fileRkp" accept=".xlsx,.xls" hidden onchange="rkpPick(this)">':'')+'</div></div>'+
+  '<div class="trn-note" style="border-bottom:none"><b>Awal</b> = penyebab yang diisi di Tambah Bahan (kolom Status / Penyebab). <b>Akhir</b> = temuan di Excel Rekap Pareto, sheet <b>Data Detail</b> (jenis defect dan kendala per JO). Dicocokkan per nomor JO. Penyebab dianggap <b>cocok</b> bila namanya sama atau mirip dengan nama defect atau kendala di Excel pada JO yang sama.</div></div></section>'+
+  (RKP.warn?'<section class="grid"><div class="card"><div class="card-b" style="background:#FFF7ED;color:#9A3412;line-height:1.6">'+esc(RKP.warn)+'</div></div></section>':'')}
+function rkpImpPreview(){var im=RKP.imp,p=String(im.periode||''),py=p.slice(0,4),pm=+p.slice(5,7)||0,ok=im.ringkasan===null?null:Math.abs(im.ringkasan-im.tot)<1;
+ var ms='<option value="">Pilih bulan</option>'+MONTHS.map(function(n,i){return '<option value="'+(i+1)+'"'+(pm===i+1?' selected':'')+'>'+n+'</option>'}).join('');
+ return '<section class="grid"><div class="card"><div class="card-h"><h3>Pratinjau import \u2014 '+esc(im.file)+'</h3></div><div style="padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">'+
+  lkhBox('Baris Data Detail',fmtID(im.rows.length))+lkhBox('Jumlah JO',fmtID(im.jo))+lkhBox('Total defect (pcs)',fmtID(im.tot))+lkhBox('Dilewati (tanpa JO / qty)',fmtID(im.skip))+'</div>'+
+  '<div style="padding:0 18px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:12.5px;color:var(--muted)">Periode laporan:</span><select class="input" id="rkpM" onchange="rkpSetPer()" style="width:auto">'+ms+'</select><input class="input" id="rkpY" value="'+esc(py)+'" placeholder="Tahun" maxlength="4" onchange="rkpSetPer()" style="width:90px"></div>'+
+  '<div class="trn-note" style="border-top:1px solid var(--line2);border-bottom:none">'+(ok===null?'Total di sheet Ringkasan tidak ditemukan, jadi total belum bisa dicek.':(ok?'<b style="color:#067647">Total cocok</b> dengan sheet Ringkasan ('+fmtID(im.ringkasan)+' pcs).':'<b style="color:#B42318">Total berbeda</b>: Data Detail '+fmtID(im.tot)+' pcs, sheet Ringkasan '+fmtID(im.ringkasan)+' pcs. Periksa file sebelum disimpan.'))+(p?'':' <b style="color:#B42318">Periode belum terbaca, pilih bulan dan tahun dulu.</b>')+' Menyimpan akan <b>menggantikan</b> rekap periode yang sama bila sudah pernah diimport.</div>'+
+  '<div style="padding:12px 18px;display:flex;gap:8px"><button class="btn btn-primary" onclick="rkpSave()"'+(RKP.saving?' disabled':'')+'>'+(RKP.saving?'Menyimpan...':'Simpan ke sistem')+'</button><button class="btn btn-ghost" onclick="rkpCancel()">Batal</button></div></div></section>'}
+function renderBandingRkp(){var y=state.year,m=state.month,lbl=m>0?MONTHS[m-1]+' '+y:'Tahun '+y,head=rkpHead();
+ if(!rkpOn())return head+'<div class="card access">'+I('lock')+'<h2>Perlu koneksi Supabase</h2><p>Rekap Excel disimpan di server, jadi halaman ini hanya tersedia saat terhubung.</p></div>';
+ if(RKP.imp)return head+rkpImpPreview();
+ if(RKP.rows===null||RKP.year!==y){rkpLoad();return head+'<div class="card"><div class="card-b" style="color:var(--muted)">Memuat rekap...</div></div>'}
+ if(RKP.err)head+='<section class="grid"><div class="card"><div class="card-b" style="background:#FFF7ED;color:#9A3412;line-height:1.6">Gagal memuat rekap dari database: '+esc(RKP.err)+'. Jika tabel <b>rekap_pareto_detail</b> belum dibuat, jalankan file SQL-nya dulu. Data yang diimport di sesi ini tetap bisa dipakai.</div></div></section>';
+ RKP.all=rkpBuild();var all=RKP.all;
+ if(!all.length)return head+'<div class="card"><div class="card-b" style="color:var(--muted);line-height:1.7">Belum ada Excel rekap yang diimport untuk tahun '+y+'.'+(isAdmin()?' Klik <b>Import Excel Rekap</b> dan pilih file Rekap Pareto (harus punya sheet <b>Data Detail</b>).':' Minta administrator mengimport file Rekap Pareto.')+'</div></div>';
+ var sc=rkpScope();
+ if(!sc.length)return head+rkpBulanCard(all)+'<div class="card"><div class="card-b" style="color:var(--muted)">Belum ada Excel rekap untuk '+lbl+'. Pilih "Semua Bulan" atau bulan lain yang sudah diimport, atau import Excel bulan ini.</div></div>';
+ var S=rkpStat(sc),big=function(l,v,n,b){return '<div style="border:1px solid var(--line2);border-radius:10px;padding:12px 14px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">'+l+'</div><div class="mono" style="font-size:'+(b?'26':'20')+'px;margin-top:4px;color:'+(b?'var(--accent)':'var(--text)')+'">'+v+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">'+n+'</div></div>'};
+ var kpi='<section class="grid"><div class="card"><div class="card-h"><h3>Akurasi temuan tambah bahan vs Excel \u2014 '+lbl+'</h3></div><div style="padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">'+
+  big('Akurasi',rkpP(S.ok,S.cmp),fmtID(S.ok)+' dari '+fmtID(S.cmp)+' JO: penyebab awal cocok dengan temuan akhir',1)+
+  big('Sesuai / Sebagian / Tidak',fmtID(S.sesuai)+' / '+fmtID(S.sebagian)+' / '+fmtID(S.beda),'semua cocok / sebagian cocok / tidak cocok')+
+  big('JO di Excel',fmtID(S.ex),fmtID(S.exTb)+' JO ('+rkpP(S.exTb,S.ex)+') punya data tambah bahan')+
+  big('Penyebab belum diisi',fmtID(S.kosong),'JO punya tambah bahan, kolom penyebab kosong')+
+  big('Tambah bahan belum di Excel',fmtID(S.noexcel),'JO tambah bahan yang tidak ada di Excel yang sudah diimport')+'</div>'+
+  '<div class="trn-note" style="border-top:1px solid var(--line2);border-bottom:none"><b>Akurasi</b> = JO yang minimal satu penyebab awalnya cocok dengan temuan di Excel, dibagi JO yang bisa dibandingkan (ada penyebab terisi dan ada di Excel).</div></div></section>';
+ if(UI.rkp.mode==='bulan')return head+kpi+rkpBulanCard(all)+rkpAggCard(sc,lbl);
+ var list=rkpFilter(sc),
+  jl='<section class="grid"><div class="card"><div class="card-h"><h3>Per JO \u2014 '+lbl+' <span id="rkpCount" class="mono" style="color:var(--muted);font-size:12px">'+fmtID(list.length)+' JO</span></h3><button class="btn btn-ghost" onclick="rkpExport()">'+I('download')+' Export Excel</button></div>'+rkpFilterBar(sc)+'<div class="trn-note">Klik satu JO untuk melihat sisi awal (tambah bahan) dan sisi akhir (Excel) berdampingan. Baris hijau di sisi Excel = temuan yang cocok dengan penyebab awal. Diurutkan dari druk tambah bahan terbesar. Export mengikuti filter.</div><div class="rlist trn" id="rkpItems">'+rkpItemsHTML(list)+'</div></div></section>';
+ return head+kpi+jl}
 UI.bdg={f:'semua',m:'cetak'};
 // Tahapan yang dianggap MESIN CETAK: mesin ber-bagian "printing" di master mesin, ditambah tahapan cetak outsource. Ubah daftar ini bila perlu.
 var BDG_CETAK=['R700','SM','GTO','ITTOH','POLLAR','R700 / SM','OUTSOURCE - CETAK'];
