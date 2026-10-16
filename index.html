@@ -975,25 +975,39 @@ function trenRow(o,i,k,withRp){var col=TREN_COL[k],vals=o.ev.map(function(e){ret
  return '<details class="trn-i"><summary><span class="mono" style="width:22px;color:var(--faint)">'+(i+1)+'</span><div class="rprod" style="flex:1;min-width:150px"><div>'+esc(o.n)+'</div><span class="rjo">'+fmtID(n)+' entri</span></div>'+
   trenSpark(vals,col)+'<div class="trn-b">'+trenBadge(trenDir(vals),n)+trenFreqBadge(trenFreq(o.ev.map(function(e){return e.tgl})))+'</div><span class="rval">'+total+'</span></summary>'+
   '<div class="trn-d"><table class="trn-t"><thead><tr><th>Tgl</th><th>No JO</th><th class="num">'+(withRp?'Nilai':TREN_UNIT[k])+'</th><th>vs sebelumnya</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>'}
+function trenSortLabel(withRp,k){return {utama:withRp?'Total nilai (Rp)':'Jumlah entri, lalu qty',qty:'Total qty',entri:'Jumlah entri',tren:'Perubahan tren (%)',nama:'Nama produk'}[k]}
+function trenDirLabel(k,o){if(k==='nama')return o==='asc'?'A \u2192 Z':'Z \u2192 A';if(k==='tren')return o==='asc'?'Turun terbesar dulu':'Naik terbesar dulu';return o==='asc'?'Terkecil dulu':'Terbesar dulu'}
 function renderTren(p){var withRp=(p==='tren'),S=UI[p],k=S.k,y=state.year,all=trenData(k,withRp,true);
- all.forEach(function(o){var v=o.ev.map(function(e){return withRp?e.rp:e.qty}),d=trenDir(v),f=trenFreq(o.ev.map(function(e){return e.tgl}));o.dc=d?d.cls:'';o.fq=f||''});
- var dd=S.d||'',ff=S.f||'',filtered=!!(dd||ff);
+ all.forEach(function(o){var v=o.ev.map(function(e){return withRp?e.rp:e.qty}),d=trenDir(v),f=trenFreq(o.ev.map(function(e){return e.tgl}));o.dc=d?d.cls:'';o.ch=d?d.ch:null;o.fq=f||''});
+ var dd=S.d||'',ff=S.f||'',sk=S.s||'utama',so=S.o||'desc',filtered=!!(dd||ff),special=filtered||sk!=='utama'||so!=='desc';
  var cnt=function(g,x){return all.filter(function(o){return g==='d'?((!ff||o.fq===ff)&&(!x||o.dc===x)):((!dd||o.dc===dd)&&(!x||o.fq===x))}).length};
  var chip=function(g,x,l){var on=(S[g]||'')===x;return '<button class="tab'+(on?' active':'')+'" onclick="trenFilter(\''+p+'\',\''+g+'\',\''+x+'\')">'+l+' <span class="mono" style="opacity:.55">'+fmtID(cnt(g,x))+'</span></button>'};
  var grp=function(t,h){return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">'+t+'</span><div class="tabs" style="flex-wrap:wrap">'+h+'</div></div>'};
  var tabs=TXK.map(function(x){return '<button class="tab'+(k===x?' active':'')+'" onclick="trenTab(\''+p+'\',\''+x+'\')">'+TX[x].sheet+'</button>'}).join('');
+ var sOpts=(withRp?['utama','entri','tren','nama']:['utama','qty','tren','nama']).map(function(x){return '<option value="'+x+'"'+(sk===x?' selected':'')+'>'+trenSortLabel(withRp,x)+'</option>'}).join('');
  var fb='<div style="padding:12px 18px;display:flex;gap:10px 22px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line2)">'+grp('Tren',chip('d','','Semua')+chip('d','up','Naik')+chip('d','down','Turun')+chip('d','same','Sama'))+grp('Frekuensi',chip('f','','Semua')+chip('f','sering','Makin sering')+chip('f','tetap','Frekuensi tetap')+chip('f','jarang','Makin jarang'))+
-  '<button class="btn '+(dd==='up'&&ff==='sering'?'btn-primary':'btn-ghost')+'" onclick="trenPreset(\''+p+'\')">Naik + Makin sering</button>'+(filtered?'<button class="btn btn-ghost" onclick="trenReset(\''+p+'\')">Reset filter</button>':'')+'</div>';
- var arr=all.filter(function(o){return (!dd||o.dc===dd)&&(!ff||o.fq===ff)}),cap=filtered?50:10,shown=arr.slice(0,cap);
+  '<button class="btn '+(dd==='up'&&ff==='sering'?'btn-primary':'btn-ghost')+'" onclick="trenPreset(\''+p+'\')">Naik + Makin sering</button>'+
+  '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Urutkan</span><select class="input" onchange="trenSort(\''+p+'\',this.value)" style="width:auto">'+sOpts+'</select><button class="btn btn-ghost" onclick="trenSortDir(\''+p+'\')" title="Balik urutan">'+(so==='asc'?'\u2191 ':'\u2193 ')+trenDirLabel(sk,so)+'</button></div>'+
+  (special?'<button class="btn btn-ghost" onclick="trenReset(\''+p+'\')">Reset</button>':'')+'</div>';
+ var arr=all.filter(function(o){return (!dd||o.dc===dd)&&(!ff||o.fq===ff)}),dir=so==='asc'?1:-1;
+ var base={utama:function(a,b){return withRp?a.rp-b.rp:((a.ev.length-b.ev.length)||(a.qty-b.qty))},qty:function(a,b){return a.qty-b.qty},entri:function(a,b){return a.ev.length-b.ev.length},nama:function(a,b){return String(a.n).localeCompare(String(b.n),'id')}}[sk];
+ if(sk==='tren'){var okT=arr.filter(function(o){return o.ch!==null}),noT=arr.filter(function(o){return o.ch===null});okT.sort(function(a,b){return dir*(a.ch-b.ch)});arr=okT.concat(noT)}else arr.sort(function(a,b){return dir*base(a,b)});
+ var cap=special?(S.lim||50):10,shown=arr.slice(0,cap);
  var note=withRp?'Urutan berdasarkan <b>total nilai (Rp)</b> setahun. Tren dihitung dari <b>urutan kejadian</b>, bukan per bulan: rata-rata nilai separuh kejadian terakhir dibanding separuh sebelumnya (selisih di bawah 5% = Sama). Produk dengan kurang dari 4 entri belum dinilai. Klik satu baris untuk melihat tiap kejadian.'
   :'<b>Tanpa harga.</b> Urutan berdasarkan <b>jumlah entri</b> setahun, lalu qty. Tren dihitung dari <b>urutan kejadian</b>, bukan per bulan: rata-rata qty separuh kejadian terakhir dibanding separuh sebelumnya (selisih di bawah 5% = Sama). Produk dengan kurang dari 4 entri belum dinilai. Klik satu baris untuk melihat tiap kejadian.';
- if(filtered)note+=' <b>Filter aktif:</b> filter dijalankan pada semua produk (bukan hanya 10 teratas), urutan tetap dari yang terbesar'+(arr.length>cap?'; menampilkan '+cap+' teratas dari '+fmtID(arr.length)+' produk':'')+'. Produk dengan kurang dari 4 entri tidak ikut karena belum bisa dinilai.';
+ if(filtered)note+=' <b>Filter aktif:</b> filter dijalankan pada semua produk (bukan hanya 10 teratas). Produk dengan kurang dari 4 entri tidak ikut karena belum bisa dinilai.';
+ if(sk!=='utama'||so!=='desc')note+=' <b>Urutan dipilih:</b> '+trenSortLabel(withRp,sk)+' \u2014 '+trenDirLabel(sk,so)+(sk==='tren'?' (produk yang belum bisa dinilai ada di paling bawah)':'')+'.';
+ if(special&&arr.length>cap)note+=' Menampilkan '+fmtID(cap)+' dari '+fmtID(arr.length)+' produk.';
  var body=shown.length?shown.map(function(o,i){return trenRow(o,i,k,withRp)}).join(''):'<div class="empty">'+I('inbox')+'<p>'+(filtered?'Tidak ada produk yang cocok dengan filter ini.':'Belum ada data pada tahun ini.')+'</p></div>';
- return '<section class="grid"><div class="card"><div class="card-h"><h3>'+(filtered?TX[k].sheet+' \u2014 Tahun '+y+' \u00B7 '+fmtID(arr.length)+' produk cocok':'Top 10 '+TX[k].sheet+' \u2014 Tahun '+y)+(withRp?'':' \u00B7 tanpa harga')+'</h3><div class="tabs">'+tabs+'</div></div>'+fb+'<div class="trn-note">'+note+'</div><div class="rlist trn">'+body+'</div></div></section>'}
-function trenFilter(p,g,x){UI[p][g]=(UI[p][g]===x)?'':x;byId('view').innerHTML=renderTren(p)}
-function trenPreset(p){var on=UI[p].d==='up'&&UI[p].f==='sering';UI[p].d=on?'':'up';UI[p].f=on?'':'sering';byId('view').innerHTML=renderTren(p)}
-function trenReset(p){UI[p].d='';UI[p].f='';byId('view').innerHTML=renderTren(p)}
-function trenTab(p,k){UI[p].k=k;byId('view').innerHTML=renderTren(p)}
+ var more=(special&&arr.length>cap)?'<div style="padding:12px 18px"><button class="btn btn-ghost" onclick="trenMore(\''+p+'\')">Tampilkan '+fmtID(Math.min(50,arr.length-cap))+' lagi (sisa '+fmtID(arr.length-cap)+')</button></div>':'';
+ return '<section class="grid"><div class="card"><div class="card-h"><h3>'+(special?TX[k].sheet+' \u2014 Tahun '+y+' \u00B7 '+fmtID(arr.length)+' produk'+(filtered?' cocok':''):'Top 10 '+TX[k].sheet+' \u2014 Tahun '+y)+(withRp?'':' \u00B7 tanpa harga')+'</h3><div class="tabs">'+tabs+'</div></div>'+fb+'<div class="trn-note">'+note+'</div><div class="rlist trn">'+body+more+'</div></div></section>'}
+function trenFilter(p,g,x){UI[p][g]=(UI[p][g]===x)?'':x;UI[p].lim=0;byId('view').innerHTML=renderTren(p)}
+function trenPreset(p){var on=UI[p].d==='up'&&UI[p].f==='sering';UI[p].d=on?'':'up';UI[p].f=on?'':'sering';UI[p].lim=0;byId('view').innerHTML=renderTren(p)}
+function trenSort(p,k){UI[p].s=k;UI[p].o=(k==='nama'?'asc':'desc');UI[p].lim=0;byId('view').innerHTML=renderTren(p)}
+function trenSortDir(p){UI[p].o=(UI[p].o||'desc')==='asc'?'desc':'asc';UI[p].lim=0;byId('view').innerHTML=renderTren(p)}
+function trenMore(p){UI[p].lim=(UI[p].lim||50)+50;byId('view').innerHTML=renderTren(p)}
+function trenReset(p){UI[p].d='';UI[p].f='';UI[p].s='utama';UI[p].o='desc';UI[p].lim=0;byId('view').innerHTML=renderTren(p)}
+function trenTab(p,k){UI[p].k=k;UI[p].lim=0;byId('view').innerHTML=renderTren(p)}
 /* ---- Status / Penyebab tambah bahan: "smeet 50 druk, kotor 30 druk" ---- */
 UI.pnb={by:'rp'};
 function sebabParse(txt,druk){druk=+druk||0;var raw=String(txt||'').trim();
